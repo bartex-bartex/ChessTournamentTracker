@@ -19,6 +19,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	implementation 'org.postgresql:postgresql:42.6.0'
+	implementation 'org.json:json:20231013'
+	implementation 'org.jooq:jooq:3.6.2'
+
 }
 
 tasks.named('test') {
