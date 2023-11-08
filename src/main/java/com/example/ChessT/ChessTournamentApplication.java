@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import org.json.*;
 
 import javax.swing.plaf.nimbus.State;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.List;
 import java.util.Random;
@@ -85,12 +88,12 @@ public class ChessTournamentApplication {
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
-									   HttpServletResponse response) throws SQLException{
+									   HttpServletResponse response) throws SQLException, NoSuchAlgorithmException {
 		if(!checkFalseCookie(auth)){
 			return new ResponseEntity<>("410", HttpStatus.IM_USED);
 		}
 		Statement st = connection.createStatement();
-		String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';",username,password);
+		String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';",username,hashPassword(password));
 		ResultSet rs = st.executeQuery(query);
 		if (!rs.next()){
 			return new ResponseEntity<String>("400", HttpStatus.I_AM_A_TEAPOT);
@@ -123,7 +126,7 @@ public class ChessTournamentApplication {
 						 @RequestParam(value = "sex") String sex,
 						 @RequestParam(value = "date_of_birth") String date,
 						 @RequestParam(value = "fide") String fide,
-						 HttpServletResponse response) throws SQLException {
+						 HttpServletResponse response) throws SQLException, NoSuchAlgorithmException {
 		if(!checkFalseCookie(auth)){
 			return new ResponseEntity<>("410", HttpStatus.IM_USED);
 		}
@@ -137,7 +140,7 @@ public class ChessTournamentApplication {
 			rs = st.executeQuery(query);
 			rs.next();
 			int id = 1 + rs.getInt(1);
-			query = String.format("insert into users (user_id,username,mail,encrypted_password,first_name,last_name,sex,date_of_birth,fide) values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')",id,username,mail,password,name,lastname,sex,date,fide);
+			query = String.format("insert into users (user_id,username,mail,encrypted_password,first_name,last_name,sex,date_of_birth,fide) values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')",id,username,mail,hashPassword(password),name,lastname,sex,date,fide);
 			st.execute(query);
 			addAuthCookie(response, id);
 			return new ResponseEntity<String>("200",HttpStatus.ACCEPTED);
@@ -200,5 +203,23 @@ public class ChessTournamentApplication {
 		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute", auth);
 		ResultSet rs = st.executeQuery(query);
 		return !rs.next();
+	}
+
+	public String hashPassword(String password) throws NoSuchAlgorithmException {
+		final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+		final byte[] hashBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+		return bytesToHex(hashBytes);
+	}
+
+	private static String bytesToHex(byte[] hash) {
+		StringBuilder hexString = new StringBuilder(2 * hash.length);
+		for (int i = 0; i < hash.length; i++) {
+			String hex = Integer.toHexString(0xff & hash[i]);
+			if(hex.length() == 1) {
+				hexString.append('0');
+			}
+			hexString.append(hex);
+		}
+		return hexString.toString();
 	}
 }
