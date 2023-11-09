@@ -295,7 +295,32 @@ public class ChessTournamentApplication {
 
 	}
 
-	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ??? dodaj update meczu
+	@GetMapping("/api/tournament/round")
+	public ResponseEntity<String> getRound(@RequestParam (value = "tournamentId") int tournamentId,
+										   @RequestParam (value = "round") int round){
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select m.match_id, m.white_player_id, m.black_player_id, m.score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;",tournamentId,round);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONArray result = new JSONArray();
+			while (rs.next()) {
+				JSONObject row = new JSONObject();
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					row.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				result.put(row);
+			}
+			if (result.isEmpty())
+				return new ResponseEntity<String>("Data base error (probably no relevant matches found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+		}
+		catch (Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
 	public ResponseEntity<String> addMatch(@CookieValue(value = "auth") String auth,
 										   @RequestParam(value = "tournament_id") int tournamentId,
 										   @RequestParam(value = "white_player_id") int wId,
