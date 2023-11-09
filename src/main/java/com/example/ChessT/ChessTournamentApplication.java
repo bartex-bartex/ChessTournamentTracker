@@ -272,6 +272,30 @@ public class ChessTournamentApplication {
 		}
 	}
 
+	@RequestMapping("/api/homepage")
+	public ResponseEntity<String> homepage(){
+		try {
+			Statement st = connection.createStatement();
+			String query = "select name,location,time_control,start_date from tournaments where start_date>now() and start_date<now() + interval '3' month limit 100;";
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONArray result = new JSONArray();
+			while (rs.next()) {
+				JSONObject row = new JSONObject();
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					row.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				result.put(row);
+			}
+			if (result.isEmpty())
+				return new ResponseEntity<String>("Data base error (probably no relevant tournaments found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+
+		}catch (Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
 
 	public String randomString32Char() {
 		int leftLimit = 48; // numeral '0'
