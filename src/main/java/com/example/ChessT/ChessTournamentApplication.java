@@ -61,24 +61,56 @@ public class ChessTournamentApplication {
 		return new ResponseEntity<String>(randomString32Char(), HttpStatus.I_AM_A_TEAPOT);
 	}
 
-	@GetMapping("/user") // sukces polskiej policji
-	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth) throws SQLException{
+	@GetMapping("/api/user") // sukces polskiej policji
+	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth){
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
 		}
-		catch (Exception e){
-			return new ResponseEntity<String>("400", HttpStatus.CONFLICT);
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select username,mail,first_name,last_name,sex,date_of_birth,fide from users where user_id = %d;", userId);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONObject result = new JSONObject();
+			if(rs.next()){
+				for (int i=1;i<=rsmd.getColumnCount();i++) {
+					result.put(rsmd.getColumnLabel(i),rs.getString(i));
+				}
+				return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
+			}
+			else {
+				return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			}
+		}
+		catch(SQLException e) {
+			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/api/user/account")
+	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth,
+									   @RequestParam(value = "id") String userId) throws SQLException{
+		try{
+			checkCookie(auth);
+		}catch (Exception e){
+			return new ResponseEntity<String>("nie zalogowany",HttpStatus.I_AM_A_TEAPOT);
 		}
 		Statement st = connection.createStatement();
-		String query = String.format("select username,mail,first_name,last_name,sex,date_of_birth,fide from users where user_id = %d;", userId);
+		String query = String.format("select first_name,last_name,sex,date_of_birth,fide from users where user_id = '%s';", userId);
 		ResultSet rs = st.executeQuery(query);
 		ResultSetMetaData rsmd = rs.getMetaData();
 		JSONObject result = new JSONObject();
-		while(rs.next()){
+		if(rs.next()){
 			for (int i=1;i<=rsmd.getColumnCount();i++) {
 				result.put(rsmd.getColumnLabel(i),rs.getString(i));
 			}
+		}else {
+			return new ResponseEntity<String>("409", HttpStatus.I_AM_A_TEAPOT);
 		}
 		return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
 
@@ -88,31 +120,41 @@ public class ChessTournamentApplication {
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
-									   HttpServletResponse response) throws SQLException, NoSuchAlgorithmException {
-		if(!checkFalseCookie(auth)){
-			return new ResponseEntity<>("410", HttpStatus.IM_USED);
-		}
-		Statement st = connection.createStatement();
-		String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';",username,hashPassword(password));
-		ResultSet rs = st.executeQuery(query);
-		if (!rs.next()){
-			return new ResponseEntity<String>("400", HttpStatus.I_AM_A_TEAPOT);
-		}
-		addAuthCookie(response, rs.getInt(1));
+									   HttpServletResponse response) {
+		try {
+			if(!checkFalseCookie(auth)){
+				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
+			}
+			Statement st = connection.createStatement();
+			String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';", username, hashPassword(password));
+			ResultSet rs = st.executeQuery(query);
+			if (!rs.next()) {
+				return new ResponseEntity<String>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
+			}
+			addAuthCookie(response, rs.getInt(1));
 
-		return new ResponseEntity<String>("200", HttpStatus.ACCEPTED);
-
+			return new ResponseEntity<String>("Successfully logged in (CODE 200)", HttpStatus.OK);
+		}
+		catch(Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 	@RequestMapping("/user/logout")
-	public ResponseEntity<String> logout(@CookieValue(value = "auth") String auth) throws SQLException {
-		if(checkFalseCookie(auth)){
-			return new ResponseEntity<>("400", HttpStatus.CONFLICT);
+	public ResponseEntity<String> logout(@CookieValue(value = "auth") String auth) {
+		try {
+			if (checkFalseCookie(auth)) {
+				return new ResponseEntity<>("No user to log out (CODE 409)", HttpStatus.CONFLICT);
+			}
+			Statement st = connection.createStatement();
+			String query = String.format("delete from sessions where session_id = '%s'", auth);
+			st.execute(query);
+			return new ResponseEntity<String>("Successfully logged out (CODE 200)", HttpStatus.OK);
 		}
-		Statement st = connection.createStatement();
-		String query = String.format("delete from sessions where session_id = '%s'",auth);
-		st.execute(query);
-		return new ResponseEntity<String>("200", HttpStatus.ACCEPTED);
+		catch (Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+
+		}
 	}
 
 	@RequestMapping("/user/register")
