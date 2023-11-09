@@ -49,7 +49,7 @@ public class ChessTournamentApplication {
 		return new ResponseEntity<String>(randomString32Char(), HttpStatus.I_AM_A_TEAPOT);
 	}
 
-	@GetMapping("/api/user") // sukces polskiej policji
+	@GetMapping("/api/user")
 	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth){
 		int userId = -1;
 		try{
@@ -69,7 +69,7 @@ public class ChessTournamentApplication {
 				for (int i=1;i<=rsmd.getColumnCount();i++) {
 					result.put(rsmd.getColumnLabel(i),rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
+				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
 			}
 			else {
 				return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -80,27 +80,31 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@GetMapping("/api/user/account")
+	@GetMapping("/api/user/account/{userId}")
 	public ResponseEntity<String> account(@CookieValue(value = "auth") String auth,
-									   @RequestParam(value = "id") String userId) throws SQLException{
-		try{
-			checkCookie(auth);
-		}catch (Exception e){
-			return new ResponseEntity<String>("nie zalogowany",HttpStatus.I_AM_A_TEAPOT);
-		}
-		Statement st = connection.createStatement();
-		String query = String.format("select first_name,last_name,sex,date_of_birth,fide from users where user_id = '%s';", userId);
-		ResultSet rs = st.executeQuery(query);
-		ResultSetMetaData rsmd = rs.getMetaData();
-		JSONObject result = new JSONObject();
-		if(rs.next()){
-			for (int i=1;i<=rsmd.getColumnCount();i++) {
-				result.put(rsmd.getColumnLabel(i),rs.getString(i));
+									   @PathVariable int userId) {
+		try {
+			try {
+				checkCookie(auth);
+			} catch (Exception e) {
+				return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 			}
-		}else {
-			return new ResponseEntity<String>("409", HttpStatus.I_AM_A_TEAPOT);
+			Statement st = connection.createStatement();
+			String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONObject result = new JSONObject();
+			if (rs.next()) {
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					result.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
+		catch(Exception e){
+			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 
 	}
 
@@ -224,9 +228,10 @@ public class ChessTournamentApplication {
 		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
 		ResultSet rs = st.executeQuery(query);
 		if(rs.next()){
+			int temp = rs.getInt(1);
 			query = String.format("Update sessions set date = now() where session_id = '%s' and date > now() - interval '30' minute;", auth);
 			st.execute(query);
-			return rs.getInt(1);
+			return temp;
 		}
 		throw new Exception("No such active auth token found");
 	}
@@ -243,7 +248,7 @@ public class ChessTournamentApplication {
 
 	public String hashPassword(String password, String username) throws NoSuchAlgorithmException {
 		final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-		final byte[] hashBytes = digest.digest((password + username.substring(0, 3)).getBytes(StandardCharsets.UTF_8));
+		final byte[] hashBytes = digest.digest((password + username).getBytes(StandardCharsets.UTF_8));
 		return bytesToHex(hashBytes);
 	}
 
