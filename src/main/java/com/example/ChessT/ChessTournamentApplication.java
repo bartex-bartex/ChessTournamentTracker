@@ -44,12 +44,12 @@ public class ChessTournamentApplication {
 	}
 
 
-	@GetMapping("/api")
+	@GetMapping("/")
 	public ResponseEntity<String> api(){
 		return new ResponseEntity<String>(randomString32Char(), HttpStatus.I_AM_A_TEAPOT);
 	}
 
-	@GetMapping("/api/user")
+	@GetMapping("/api/user") // sukces polskiej policji
 	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth){
 		int userId = -1;
 		try{
@@ -69,7 +69,7 @@ public class ChessTournamentApplication {
 				for (int i=1;i<=rsmd.getColumnCount();i++) {
 					result.put(rsmd.getColumnLabel(i),rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
 			}
 			else {
 				return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -80,31 +80,27 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@GetMapping("/api/user/account/{userId}")
+	@GetMapping("/api/user/account/{id}")
 	public ResponseEntity<String> account(@CookieValue(value = "auth") String auth,
-									   @PathVariable int userId) {
-		try {
-			try {
-				checkCookie(auth);
-			} catch (Exception e) {
-				return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
-			}
-			Statement st = connection.createStatement();
-			String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
-			ResultSet rs = st.executeQuery(query);
-			ResultSetMetaData rsmd = rs.getMetaData();
-			JSONObject result = new JSONObject();
-			if (rs.next()) {
-				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-					result.put(rsmd.getColumnLabel(i), rs.getString(i));
-				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
-			}
-			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+										  @PathVariable(value = "id") int userId) throws SQLException{
+		try{
+			checkCookie(auth);
+		}catch (Exception e){
+			return new ResponseEntity<String>("nie zalogowany",HttpStatus.I_AM_A_TEAPOT);
 		}
-		catch(Exception e){
-			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		Statement st = connection.createStatement();
+		String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
+		ResultSet rs = st.executeQuery(query);
+		ResultSetMetaData rsmd = rs.getMetaData();
+		JSONObject result = new JSONObject();
+		if(rs.next()){
+			for (int i=1;i<=rsmd.getColumnCount();i++) {
+				result.put(rsmd.getColumnLabel(i),rs.getString(i));
+			}
+		}else {
+			return new ResponseEntity<String>("409", HttpStatus.I_AM_A_TEAPOT);
 		}
+		return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
 
 	}
 
@@ -112,7 +108,7 @@ public class ChessTournamentApplication {
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
-									   HttpServletResponse response) {
+										HttpServletResponse response) {
 		try {
 			if(!checkFalseCookie(auth)){
 				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
@@ -150,16 +146,16 @@ public class ChessTournamentApplication {
 
 	@RequestMapping("/api/user/register")
 	public ResponseEntity<String> register(@CookieValue(value = "auth", defaultValue = "xd") String auth,
-			 			 @RequestParam(value = "username") String username,
-						 @RequestParam(value = "password") String password,
-						 @RequestParam(value = "passwordAgain") String password2,
-						 @RequestParam(value = "mail") String mail,
-						 @RequestParam(value = "first_name") String name,
-						 @RequestParam(value = "last_name") String lastname,
-						 @RequestParam(value = "sex") String sex,
-						 @RequestParam(value = "date_of_birth") String date,
-						 @RequestParam(value = "fide") String fide,
-						 HttpServletResponse response) {
+										   @RequestParam(value = "username") String username,
+										   @RequestParam(value = "password") String password,
+										   @RequestParam(value = "passwordAgain") String password2,
+										   @RequestParam(value = "mail") String mail,
+										   @RequestParam(value = "first_name") String name,
+										   @RequestParam(value = "last_name") String lastname,
+										   @RequestParam(value = "sex") String sex,
+										   @RequestParam(value = "date_of_birth") String date,
+										   @RequestParam(value = "fide") String fide,
+										   HttpServletResponse response) {
 		try {
 			if (!checkFalseCookie(auth)) {
 				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
@@ -170,7 +166,7 @@ public class ChessTournamentApplication {
 			rs.next();
 			int rowCount = rs.getInt(1);
 			if (rowCount == 0 && password.equals(password2)) {
-				query = "select max(user_id) from users";
+				query = "select coalesce(max(user_id),0) from users";
 				rs = st.executeQuery(query);
 				rs.next();
 				int id = 1 + rs.getInt(1);
@@ -184,6 +180,50 @@ public class ChessTournamentApplication {
 		catch(Exception e){
 			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
+	}
+
+	@RequestMapping("/api/user/create")
+	public ResponseEntity<String> create(@CookieValue(value = "auth") String auth,
+										   @RequestParam(value = "tournamentName") String name,
+										   @RequestParam(value = "location") String location,
+										   @RequestParam(value = "organizer") String organizer,
+										   @RequestParam(value = "timeControl") String timeControl,
+										   @RequestParam(value = "startDate") String startDate,
+										   @RequestParam(value = "endDate") String endDate,
+										   @RequestParam(value = "rounds") int rounds,
+										   @RequestParam(value = "info") String info) {
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select count(x) from (select * from tournaments where name = '%s') as x", name);
+			ResultSet rs = st.executeQuery(query);
+			rs.next();
+			int rowCount = rs.getInt(1);
+			if (rowCount == 0) {
+				query = "select coalesce(max(tournament_id),0) from tournaments";
+				rs = st.executeQuery(query);
+				rs.next();
+				int id = 1 + rs.getInt(1);
+				query = String.format("insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) values ('%d','%s','%s','%s','%s','%s','%s','%d','%s')", id,name,location,organizer,timeControl,startDate,endDate,rounds,info);
+				st.execute(query);
+				query = String.format("insert into tournament_role (user_id,tournament_id,role) values (%d,%d,'admin')",userId,id);
+				st.execute(query);
+
+				return new ResponseEntity<String>("Tournament successfully registered (CODE 200)", HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("Tournament with that name already exists (CODE 409)", HttpStatus.CONFLICT);
+		}
+		catch(Exception e){
+			return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
 	}
 
 
@@ -248,7 +288,7 @@ public class ChessTournamentApplication {
 
 	public String hashPassword(String password, String username) throws NoSuchAlgorithmException {
 		final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-		final byte[] hashBytes = digest.digest((password + username).getBytes(StandardCharsets.UTF_8));
+		final byte[] hashBytes = digest.digest((password + username.substring(0, 3)).getBytes(StandardCharsets.UTF_8));
 		return bytesToHex(hashBytes);
 	}
 
