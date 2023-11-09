@@ -43,19 +43,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	/*@GetMapping("/hello")
-	public String hello(@RequestParam(value = "name", defaultValue = "World") String name) throws SQLException {
-		Statement st = connection.createStatement();
-		ResultSet rs = st.executeQuery("select * from users");
-		while (rs.next()) {
-			temp += rs.getString(1);
-		}
-		rs.close();
-		st.close();
 
-		return String.format("Hello %s!", temp);
-	}*/
-	//public ResponseEntity<String> user(@RequestParam(value = "id", defaultValue = "1") String id) throws SQLException{
 	@GetMapping("/api")
 	public ResponseEntity<String> api(){
 		return new ResponseEntity<String>(randomString32Char(), HttpStatus.I_AM_A_TEAPOT);
@@ -93,7 +81,7 @@ public class ChessTournamentApplication {
 	}
 
 	@GetMapping("/api/user/account")
-	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth,
+	public ResponseEntity<String> account(@CookieValue(value = "auth") String auth,
 									   @RequestParam(value = "id") String userId) throws SQLException{
 		try{
 			checkCookie(auth);
@@ -116,7 +104,7 @@ public class ChessTournamentApplication {
 
 	}
 
-	@RequestMapping("/user/login") // sukces polskiej policji
+	@RequestMapping("/api/user/login")
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
@@ -126,7 +114,7 @@ public class ChessTournamentApplication {
 				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
 			}
 			Statement st = connection.createStatement();
-			String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';", username, hashPassword(password));
+			String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';", username, hashPassword(password, username));
 			ResultSet rs = st.executeQuery(query);
 			if (!rs.next()) {
 				return new ResponseEntity<String>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
@@ -140,7 +128,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/user/logout")
+	@RequestMapping("/api/user/logout")
 	public ResponseEntity<String> logout(@CookieValue(value = "auth") String auth) {
 		try {
 			if (checkFalseCookie(auth)) {
@@ -153,11 +141,10 @@ public class ChessTournamentApplication {
 		}
 		catch (Exception e){
 			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
-
 		}
 	}
 
-	@RequestMapping("/user/register")
+	@RequestMapping("/api/user/register")
 	public ResponseEntity<String> register(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 			 			 @RequestParam(value = "username") String username,
 						 @RequestParam(value = "password") String password,
@@ -168,26 +155,31 @@ public class ChessTournamentApplication {
 						 @RequestParam(value = "sex") String sex,
 						 @RequestParam(value = "date_of_birth") String date,
 						 @RequestParam(value = "fide") String fide,
-						 HttpServletResponse response) throws SQLException, NoSuchAlgorithmException {
-		if(!checkFalseCookie(auth)){
-			return new ResponseEntity<>("410", HttpStatus.IM_USED);
-		}
-		Statement st = connection.createStatement();
-		String query = String.format("select count(x) from (select * from users where username = '%s' or mail = '%s') as x",username,mail);
-		ResultSet rs = st.executeQuery(query);
-		rs.next();
-		int rowCount = rs.getInt(1);
-		if (rowCount == 0 && password.equals(password2)){
-			query = "select max(user_id) from users";
-			rs = st.executeQuery(query);
+						 HttpServletResponse response) {
+		try {
+			if (!checkFalseCookie(auth)) {
+				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
+			}
+			Statement st = connection.createStatement();
+			String query = String.format("select count(x) from (select * from users where username = '%s' or mail = '%s') as x", username, mail);
+			ResultSet rs = st.executeQuery(query);
 			rs.next();
-			int id = 1 + rs.getInt(1);
-			query = String.format("insert into users (user_id,username,mail,encrypted_password,first_name,last_name,sex,date_of_birth,fide) values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')",id,username,mail,hashPassword(password),name,lastname,sex,date,fide);
-			st.execute(query);
-			addAuthCookie(response, id);
-			return new ResponseEntity<String>("200",HttpStatus.ACCEPTED);
+			int rowCount = rs.getInt(1);
+			if (rowCount == 0 && password.equals(password2)) {
+				query = "select max(user_id) from users";
+				rs = st.executeQuery(query);
+				rs.next();
+				int id = 1 + rs.getInt(1);
+				query = String.format("insert into users (user_id,username,mail,encrypted_password,first_name,last_name,sex,date_of_birth,fide) values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
+				st.execute(query);
+				addAuthCookie(response, id);
+				return new ResponseEntity<String>("Successfully registered (CODE 200)", HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("User with this username or email already exists (CODE 409)", HttpStatus.CONFLICT);
 		}
-		return new ResponseEntity<String>("400",HttpStatus.I_AM_A_TEAPOT);
+		catch(Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 
@@ -227,11 +219,13 @@ public class ChessTournamentApplication {
 		r.addCookie(c);
 	}
 
-	public int checkCookie(String auth) throws SQLException, Exception {
+	public int checkCookie(String auth) throws Exception {
 		Statement st = connection.createStatement();
-		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute", auth);
+		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
 		ResultSet rs = st.executeQuery(query);
 		if(rs.next()){
+			query = String.format("Update sessions set date = now() where session_id = '%s' and date > now() - interval '30' minute;", auth);
+			st.execute(query);
 			return rs.getInt(1);
 		}
 		throw new Exception("No such active auth token found");
@@ -242,14 +236,14 @@ public class ChessTournamentApplication {
 			return true;
 		}
 		Statement st = connection.createStatement();
-		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute", auth);
+		String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
 		ResultSet rs = st.executeQuery(query);
 		return !rs.next();
 	}
 
-	public String hashPassword(String password) throws NoSuchAlgorithmException {
+	public String hashPassword(String password, String username) throws NoSuchAlgorithmException {
 		final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-		final byte[] hashBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+		final byte[] hashBytes = digest.digest((password + username.substring(0, 3)).getBytes(StandardCharsets.UTF_8));
 		return bytesToHex(hashBytes);
 	}
 
