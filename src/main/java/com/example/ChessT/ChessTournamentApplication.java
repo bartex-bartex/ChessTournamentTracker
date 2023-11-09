@@ -37,10 +37,12 @@ public class ChessTournamentApplication {
 			}else {
 				temp = "Connection Failed";
 			}
-			// odkomentowac w nalezytym czasie
-			/*Statement st = connection.createStatement();
+			// Uncomment at the close
+			/*
+			Statement st = connection.createStatement();
 			String query = "delete from sessions;";
-			st.execute(query);*/
+			st.execute(query);
+			*/
 		}catch (Exception e){
 			temp = e.getMessage();
 		}
@@ -53,7 +55,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 		}
 
 		try {
@@ -66,14 +68,14 @@ public class ChessTournamentApplication {
 				for (int i=1;i<=rsmd.getColumnCount();i++) {
 					result.put(rsmd.getColumnLabel(i),rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
+				return new ResponseEntity<>(result.toString(), HttpStatus.ACCEPTED);
 			}
 			else {
-				return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+				return new ResponseEntity<>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 			}
 		}
 		catch(SQLException e) {
-			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -84,7 +86,7 @@ public class ChessTournamentApplication {
 			try {
 				checkCookie(auth);
 			} catch (Exception e) {
-				return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+				return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 			}
 			Statement st = connection.createStatement();
 			String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
@@ -95,12 +97,12 @@ public class ChessTournamentApplication {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 		catch(Exception e){
-			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 	}
@@ -118,14 +120,14 @@ public class ChessTournamentApplication {
 			String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';", username, hashPassword(password, username));
 			ResultSet rs = st.executeQuery(query);
 			if (!rs.next()) {
-				return new ResponseEntity<String>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
+				return new ResponseEntity<>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
 			}
 			addAuthCookie(response, rs.getInt(1));
 
-			return new ResponseEntity<String>("Successfully logged in (CODE 200)", HttpStatus.OK);
+			return new ResponseEntity<>("Successfully logged in (CODE 200)", HttpStatus.OK);
 		}
 		catch(Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -138,10 +140,10 @@ public class ChessTournamentApplication {
 			Statement st = connection.createStatement();
 			String query = String.format("delete from sessions where session_id = '%s'", auth);
 			st.execute(query);
-			return new ResponseEntity<String>("Successfully logged out (CODE 200)", HttpStatus.OK);
+			return new ResponseEntity<>("Successfully logged out (CODE 200)", HttpStatus.OK);
 		}
 		catch (Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -174,12 +176,12 @@ public class ChessTournamentApplication {
 				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
 				st.execute(query);
 				addAuthCookie(response, id);
-				return new ResponseEntity<String>("Successfully registered (CODE 200)", HttpStatus.OK);
+				return new ResponseEntity<>("Successfully registered (CODE 200)", HttpStatus.OK);
 			}
-			return new ResponseEntity<String>("User with this username or email already exists (CODE 409)", HttpStatus.CONFLICT);
+			return new ResponseEntity<>("User with this username or email already exists (CODE 409)", HttpStatus.CONFLICT);
 		}
 		catch(Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -198,7 +200,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 		}
 
 		try {
@@ -217,12 +219,12 @@ public class ChessTournamentApplication {
 				query = String.format("insert into tournament_role (user_id,tournament_id,role) values (%d,%d,'admin')",userId,id);
 				st.execute(query);
 
-				return new ResponseEntity<String>("Tournament successfully registered (CODE 200)", HttpStatus.OK);
+				return new ResponseEntity<>("Tournament successfully registered (CODE 200)", HttpStatus.OK);
 			}
-			return new ResponseEntity<String>("Tournament with that name already exists (CODE 409)", HttpStatus.CONFLICT);
+			return new ResponseEntity<>("Tournament with that name already exists (CODE 409)", HttpStatus.CONFLICT);
 		}
 		catch(Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 	}
@@ -235,7 +237,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 		}
 		try {
 			Statement st = connection.createStatement();
@@ -243,12 +245,12 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			rs.next();
 			if (rs.getInt(1) >= 1)
-				return new ResponseEntity<String>("This user is already assigned to this tournament (CODE 409)",HttpStatus.CONFLICT);
+				return new ResponseEntity<>("This user is already assigned to this tournament (CODE 409)",HttpStatus.CONFLICT);
 			query = String.format("insert into tournament_role (user_id, tournament_id, role) values (%d,%d,'player')",userId,tournamentId);
 			st.execute(query);
-			return new ResponseEntity<String>("Joined to the tournament successfully (CODE 200)",HttpStatus.OK);
+			return new ResponseEntity<>("Joined to the tournament successfully (CODE 200)",HttpStatus.OK);
 		}catch (Exception E){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -264,12 +266,12 @@ public class ChessTournamentApplication {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<String>("Data base error (probably no relevant tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 
 		}catch (Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -285,12 +287,12 @@ public class ChessTournamentApplication {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
-				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<String>("Data base error (probably no relevant match found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant match found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 
 		}catch (Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 	}
@@ -312,11 +314,11 @@ public class ChessTournamentApplication {
 				result.put(row);
 			}
 			if (result.isEmpty())
-				return new ResponseEntity<String>("Data base error (probably no relevant matches found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
-			return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<>("Data base error (probably no relevant matches found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 		}
 		catch (Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -346,7 +348,7 @@ public class ChessTournamentApplication {
 				rs = st.executeQuery(query);
 				rs.next();
 				if (rs.getInt(1) < 2)
-					return new ResponseEntity<String>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
+					return new ResponseEntity<>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
 				query = String.format("select match_id from matches where tournament_id = %d and white_player_id = %d and black_player_id = %d and round = %d",tournamentId,wId,bId,round);
 				rs = st.executeQuery(query);
 				int matchId;
@@ -354,7 +356,7 @@ public class ChessTournamentApplication {
 					matchId = rs.getInt(1);
 					query = String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s' where match_id = %d;",score,table,gameNotation,matchId);
 					st.execute(query);
-					return new ResponseEntity<String>("Match successfully updated (CODE 200)",HttpStatus.OK);
+					return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
 				}
 				else {
 					query = "select coalesce(max(match_id),0) from matches";
@@ -363,15 +365,15 @@ public class ChessTournamentApplication {
 					matchId = 1 + rs.getInt(1);
 					query = String.format("insert into matches values (%d,%d,%d,%d,%d,%d,%d,'%s')",matchId,wId,bId,tournamentId,score,round,table,gameNotation);
 					st.execute(query);
-					return new ResponseEntity<String>("Match successfully added (CODE 200)",HttpStatus.OK);
+					return new ResponseEntity<>("Match successfully added (CODE 200)",HttpStatus.OK);
 				}
 
 			}
-			return new ResponseEntity<String>("No permissions to add match (CODE 403)",HttpStatus.FORBIDDEN);
+			return new ResponseEntity<>("No permissions to add match (CODE 403)",HttpStatus.FORBIDDEN);
 		}
 		catch (Exception e)
 		{
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -391,11 +393,11 @@ public class ChessTournamentApplication {
 				result.put(row);
 			}
 			if (result.isEmpty())
-				return new ResponseEntity<String>("Data base error (probably no relevant tournaments found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
-			return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+				return new ResponseEntity<>("Data base error (probably no relevant tournaments found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 
 		}catch (Exception e){
-			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -406,13 +408,11 @@ public class ChessTournamentApplication {
 		int targetStringLength = 32;
 		Random random = new Random();
 
-		String generatedString = random.ints(leftLimit, rightLimit + 1)
+        return random.ints(leftLimit, rightLimit + 1)
 				.filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
 				.limit(targetStringLength)
 				.collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
 				.toString();
-
-		return generatedString;
 	}
 
 	public void addAuthCookie(HttpServletResponse r, int userId) throws SQLException {
