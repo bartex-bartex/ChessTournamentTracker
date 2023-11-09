@@ -37,7 +37,9 @@ public class ChessTournamentApplication {
 			}else {
 				temp = "Connection Failed";
 			}
-
+			Statement st = connection.createStatement();
+			String query = "delete from sessions;";
+			st.execute(query);
 		}catch (Exception e){
 			temp = e.getMessage();
 		}
@@ -103,7 +105,7 @@ public class ChessTournamentApplication {
 	}
 
 	@RequestMapping("/api/user/login")
-	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
 										HttpServletResponse response) {
@@ -143,7 +145,7 @@ public class ChessTournamentApplication {
 	}
 
 	@RequestMapping("/api/user/register")
-	public ResponseEntity<String> register(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+	public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
 										   @RequestParam(value = "username") String username,
 										   @RequestParam(value = "password") String password,
 										   @RequestParam(value = "passwordAgain") String password2,
@@ -219,9 +221,55 @@ public class ChessTournamentApplication {
 			return new ResponseEntity<String>("Tournament with that name already exists (CODE 409)", HttpStatus.CONFLICT);
 		}
 		catch(Exception e){
-			return new ResponseEntity<String>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
+	}
+
+	@RequestMapping("/api/tournament/join/{tournamentId}")
+	public ResponseEntity<String> join(@CookieValue(value = "auth") String auth,
+										@PathVariable int tournamentId){
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select count(*) from tournament_role where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			ResultSet rs = st.executeQuery(query);
+			rs.next();
+			if (rs.getInt(1) >= 1)
+				return new ResponseEntity<String>("This user is already assigned to this tournament (CODE 409)",HttpStatus.CONFLICT);
+			query = String.format("insert into tournament_role (user_id, tournament_id, role) values (%d,%d,'player')",userId,tournamentId);
+			st.execute(query);
+			return new ResponseEntity<String>("Joined to the tournament successfully (CODE 200)",HttpStatus.OK);
+		}catch (Exception E){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@RequestMapping("/api/tournament/{tournamentId}")
+	public ResponseEntity<String> tournamentInfo(@PathVariable int tournamentId){
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select * from tournaments where tournament_id = %d",tournamentId);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONObject result = new JSONObject();
+			if (rs.next()) {
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					result.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("Data base error (probably no relevant tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+
+		}catch (Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 
