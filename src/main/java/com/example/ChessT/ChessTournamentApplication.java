@@ -37,9 +37,10 @@ public class ChessTournamentApplication {
 			}else {
 				temp = "Connection Failed";
 			}
-			Statement st = connection.createStatement();
+			// odkomentowac w nalezytym czasie
+			/*Statement st = connection.createStatement();
 			String query = "delete from sessions;";
-			st.execute(query);
+			st.execute(query);*/
 		}catch (Exception e){
 			temp = e.getMessage();
 		}
@@ -170,7 +171,7 @@ public class ChessTournamentApplication {
 				rs = st.executeQuery(query);
 				rs.next();
 				int id = 1 + rs.getInt(1);
-				query = String.format("insert into users (user_id,username,mail,encrypted_password,first_name,last_name,sex,date_of_birth,fide) values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
+				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
 				st.execute(query);
 				addAuthCookie(response, id);
 				return new ResponseEntity<String>("Successfully registered (CODE 200)", HttpStatus.OK);
@@ -251,7 +252,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/{tournamentId}")
+	@GetMapping("/api/tournament/{tournamentId}")
 	public ResponseEntity<String> tournamentInfo(@PathVariable int tournamentId){
 		try {
 			Statement st = connection.createStatement();
@@ -272,7 +273,72 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/homepage")
+	@GetMapping("/api/tournament/match/{matchId}")
+	public ResponseEntity<String> getMatch(@PathVariable int matchId){
+		try{
+			Statement st = connection.createStatement();
+			String query = String.format("select m.match_id, m.white_player_id, m.black_player_id, m.score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.match_id = %d;",matchId);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONObject result = new JSONObject();
+			if (rs.next()) {
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					result.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("Data base error (probably no relevant match found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+
+		}catch (Exception e){
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+
+	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ??? dodaj update meczu
+	public ResponseEntity<String> addMatch(@CookieValue(value = "auth") String auth,
+										   @RequestParam(value = "tournament_id") int tournamentId,
+										   @RequestParam(value = "white_player_id") int wId,
+										   @RequestParam(value = "black_player_id") int bId,
+										   @RequestParam(value = "table") int table,
+										   @RequestParam(value = "round") int round,
+										   @RequestParam(value = "score", defaultValue = "2137") int score,
+										   @RequestParam(value = "game_notation", defaultValue = "") String gameNotation
+										   ){
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select role from tournament_role where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			ResultSet rs = st.executeQuery(query);
+			if (rs.next() && rs.getString(1).equals("admin")){
+				query = String.format("select count(*) from tournament_role where tournament_id = %d and user_id in (%d,%d);",tournamentId,wId,bId);
+				rs = st.executeQuery(query);
+				rs.next();
+				if (rs.getInt(1) < 2)
+					return new ResponseEntity<String>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
+				query = "select coalesce(max(match_id),0) from matches";
+				rs = st.executeQuery(query);
+				rs.next();
+				int matchId = 1 + rs.getInt(1);
+				query = String.format("insert into matches values (%d,%d,%d,%d,%d,%d,%d,'%s')",matchId,wId,bId,tournamentId,score,round,table,gameNotation);
+				st.execute(query);
+				return new ResponseEntity<String>("Match successfully added (CODE 200)",HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("No permissions to add match (CODE 403)",HttpStatus.FORBIDDEN);
+		}
+		catch (Exception e)
+		{
+			return new ResponseEntity<String>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/api/homepage")
 	public ResponseEntity<String> homepage(){
 		try {
 			Statement st = connection.createStatement();
