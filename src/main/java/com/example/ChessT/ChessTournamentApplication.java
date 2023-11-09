@@ -322,13 +322,25 @@ public class ChessTournamentApplication {
 				rs.next();
 				if (rs.getInt(1) < 2)
 					return new ResponseEntity<String>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
-				query = "select coalesce(max(match_id),0) from matches";
+				query = String.format("select match_id from matches where tournament_id = %d and white_player_id = %d and black_player_id = %d and round = %d",tournamentId,wId,bId,round);
 				rs = st.executeQuery(query);
-				rs.next();
-				int matchId = 1 + rs.getInt(1);
-				query = String.format("insert into matches values (%d,%d,%d,%d,%d,%d,%d,'%s')",matchId,wId,bId,tournamentId,score,round,table,gameNotation);
-				st.execute(query);
-				return new ResponseEntity<String>("Match successfully added (CODE 200)",HttpStatus.OK);
+				int matchId;
+				if (rs.next()){
+					matchId = rs.getInt(1);
+					query = String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s' where match_id = %d;",score,table,gameNotation,matchId);
+					st.execute(query);
+					return new ResponseEntity<String>("Match successfully updated (CODE 200)",HttpStatus.OK);
+				}
+				else {
+					query = "select coalesce(max(match_id),0) from matches";
+					rs = st.executeQuery(query);
+					rs.next();
+					matchId = 1 + rs.getInt(1);
+					query = String.format("insert into matches values (%d,%d,%d,%d,%d,%d,%d,'%s')",matchId,wId,bId,tournamentId,score,round,table,gameNotation);
+					st.execute(query);
+					return new ResponseEntity<String>("Match successfully added (CODE 200)",HttpStatus.OK);
+				}
+
 			}
 			return new ResponseEntity<String>("No permissions to add match (CODE 403)",HttpStatus.FORBIDDEN);
 		}
