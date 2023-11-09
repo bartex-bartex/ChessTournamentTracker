@@ -43,13 +43,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-
-	@GetMapping("/")
-	public ResponseEntity<String> api(){
-		return new ResponseEntity<String>(randomString32Char(), HttpStatus.I_AM_A_TEAPOT);
-	}
-
-	@GetMapping("/api/user") // sukces polskiej policji
+	@GetMapping("/api/user")
 	public ResponseEntity<String> user(@CookieValue(value = "auth") String auth){
 		int userId = -1;
 		try{
@@ -80,27 +74,31 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@GetMapping("/api/user/account/{id}")
+	@GetMapping("/api/user/account/{userId}")
 	public ResponseEntity<String> account(@CookieValue(value = "auth") String auth,
-										  @PathVariable(value = "id") int userId) throws SQLException{
-		try{
-			checkCookie(auth);
-		}catch (Exception e){
-			return new ResponseEntity<String>("nie zalogowany",HttpStatus.I_AM_A_TEAPOT);
-		}
-		Statement st = connection.createStatement();
-		String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
-		ResultSet rs = st.executeQuery(query);
-		ResultSetMetaData rsmd = rs.getMetaData();
-		JSONObject result = new JSONObject();
-		if(rs.next()){
-			for (int i=1;i<=rsmd.getColumnCount();i++) {
-				result.put(rsmd.getColumnLabel(i),rs.getString(i));
+										  @PathVariable int userId) {
+		try {
+			try {
+				checkCookie(auth);
+			} catch (Exception e) {
+				return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 			}
-		}else {
-			return new ResponseEntity<String>("409", HttpStatus.I_AM_A_TEAPOT);
+			Statement st = connection.createStatement();
+			String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
+			ResultSet rs = st.executeQuery(query);
+			ResultSetMetaData rsmd = rs.getMetaData();
+			JSONObject result = new JSONObject();
+			if (rs.next()) {
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					result.put(rsmd.getColumnLabel(i), rs.getString(i));
+				}
+				return new ResponseEntity<String>(result.toString(), HttpStatus.OK);
+			}
+			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		return new ResponseEntity<String>(result.toString(), HttpStatus.ACCEPTED);
+		catch(Exception e){
+			return new ResponseEntity<String>("Data base error (probably no relevant user found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 
 	}
 
@@ -182,7 +180,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/user/create")
+	@RequestMapping("/api/tournament/create")
 	public ResponseEntity<String> create(@CookieValue(value = "auth") String auth,
 										   @RequestParam(value = "tournamentName") String name,
 										   @RequestParam(value = "location") String location,
@@ -259,6 +257,7 @@ public class ChessTournamentApplication {
 		st.execute(query);
 
 		Cookie c = new Cookie("auth", newAuth);
+		c.setPath("/api/");
 		c.setSecure(true);
 		r.addCookie(c);
 	}
@@ -288,7 +287,7 @@ public class ChessTournamentApplication {
 
 	public String hashPassword(String password, String username) throws NoSuchAlgorithmException {
 		final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-		final byte[] hashBytes = digest.digest((password + username.substring(0, 3)).getBytes(StandardCharsets.UTF_8));
+		final byte[] hashBytes = digest.digest((password + username).getBytes(StandardCharsets.UTF_8));
 		return bytesToHex(hashBytes);
 	}
 
