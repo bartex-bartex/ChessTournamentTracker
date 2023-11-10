@@ -326,10 +326,33 @@ public class ChessTournamentApplication {
 											 @RequestParam(value = "userId") int userId){ //not done yet
 		try {
 			Statement st = connection.createStatement();
-			String query = String.format("select u.user_id, u.username, u.first_name, u.last_name, u.fide, tr.tournament_id, coalesce(f.change_in_rank,0) as rank_change from users u join tournament_role tr on u.user_id = tr.user_id left join (select user_id, sum(value) as change_in_rank from fide_change group by user_id) f on tr.user_id = f.user_id where tr.role = 'player' and tr.tournament_id = %d and u.user_id = %d;",tournamentId,userId);
+			String query = String.format("select u.user_id, u.username, u.first_name, u.last_name, u.fide, tr.tournament_id, coalesce(f.change_in_rank,0) as rank_change from users u join tournament_role tr on u.user_id = tr.user_id left join (select user_id, sum(value) as change_in_rank from fide_change join matches using(match_id) where tournament_id = %d group by user_id) f on tr.user_id = f.user_id where tr.role = 'player' and tr.tournament_id = %d and u.user_id = %d;",tournamentId,tournamentId,userId);
 			ResultSet rs = st.executeQuery(query);
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONObject result = new JSONObject();
+			JSONObject basicInfo = new JSONObject();
+			JSONArray opponents = new JSONArray();
+			JSONObject avgNScore = new JSONObject();
+
+			/*select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
+where tournament_id = 1 and white_player_id = 11
+union
+select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
+where tournament_id = 1 and black_player_id = 11*/
+			/*select avg(fide)::int from (select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
+where tournament_id = 1 and white_player_id = 11
+union
+select tournament_id, match_id, u.user_id as oponent_id, u.first_name, u.last_name, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
+where tournament_id = 1 and black_player_id = 11)*/
+			/*Select sum(CASE --do zrobienia w javie XD
+    WHEN score = 1 THEN 1
+    WHEN score = 0 THEN 0.5
+    else 0
+END) from (select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
+where tournament_id = 1 and white_player_id = 11
+union
+select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
+where tournament_id = 1 and black_player_id = 11)*/
 			if (rs.next()) {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
@@ -344,7 +367,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
+	@PutMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
 	public ResponseEntity<String> addMatch(@CookieValue(value = "auth") String auth,
 										   @RequestParam(value = "tournament_id") int tournamentId,
 										   @RequestParam(value = "white_player_id") int wId,
