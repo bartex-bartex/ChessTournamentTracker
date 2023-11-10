@@ -311,7 +311,7 @@ public class ChessTournamentApplication {
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
 			JSONArray rankingC = new JSONArray();
-			query = String.format("SELECT u.user_id, first_name, last_name, username, sum(fc.value) as fide_change, coalesce(start_fide, u.fide) as start_fide, (select sum(case when white_player_id = u.user_id then (CASE WHEN score = 1 THEN 1 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 0 ELSE 0 END) else (CASE WHEN score = 1 THEN 0 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 1 ELSE 0 END) end) as score from matches m where tournament_id = 1 and (white_player_id = u.user_id or black_player_id =u.user_id)) as score from fide_changes fc join matches m using(match_id) join users u using(user_id) join tournament_roles tr on tr.tournament_id = m.tournament_id and u.user_id = tr.user_id where m.tournament_id = 1 group by u.user_id, first_name, last_name, username, start_fide;",tournamentId);
+			query = String.format("SELECT u.user_id, first_name, last_name, username, sum(fc.value) as fide_change, coalesce(start_fide, u.fide) as start_fide, (select sum(case when white_player_id = u.user_id then (CASE WHEN score = 1 THEN 1 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 0 ELSE 0 END) else (CASE WHEN score = 1 THEN 0 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 1 ELSE 0 END) end) as score from matches m where tournament_id = 1 and (white_player_id = u.user_id or black_player_id =u.user_id)) as score from fide_changes fc join matches m using(match_id) join users u using(user_id) join tournament_roles tr on tr.tournament_id = m.tournament_id and u.user_id = tr.user_id where m.tournament_id = %d group by u.user_id, first_name, last_name, username, start_fide;",tournamentId);
 			rs = st.executeQuery(query);
 			rsmd = rs.getMetaData();
 			while (rs.next()) {
@@ -390,23 +390,23 @@ public class ChessTournamentApplication {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
 				query = String.format("""
-select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
-(CASE
-WHEN score = 1 THEN 1
-WHEN score = 0 THEN 0.5
-WHEN score = -1 THEN 0
-ELSE -1 END) as score,
-m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
-where tournament_id = %d and white_player_id = %d
-union
-select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
-(CASE
-WHEN score = 1 THEN 0
-WHEN score = 0 THEN 0.5
-WHEN score = -1 THEN 1
-ELSE -1 END) as score,
-m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
-where tournament_id = %d and black_player_id = %d;
+						select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
+						(CASE
+						WHEN score = 1 THEN 1
+						WHEN score = 0 THEN 0.5
+						WHEN score = -1 THEN 0
+						ELSE -1 END) as score,
+						m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
+						where tournament_id = %d and white_player_id = %d
+						union
+						select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
+						(CASE
+						WHEN score = 1 THEN 0
+						WHEN score = 0 THEN 0.5
+						WHEN score = -1 THEN 1
+						ELSE -1 END) as score,
+						m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
+						where tournament_id = %d and black_player_id = %d;
 						""",tournamentId,userId,tournamentId,userId);
 				rs = st.executeQuery(query);
 				rsmd = rs.getMetaData();
@@ -443,14 +443,14 @@ where tournament_id = %d and black_player_id = %d;
 		}
 	}
 
-	@PutMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
-	public ResponseEntity<String> addMatch(@CookieValue(value = "auth") String auth,
+	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
+	public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										   @RequestParam(value = "tournament_id") int tournamentId,
 										   @RequestParam(value = "white_player_id") int wId,
 										   @RequestParam(value = "black_player_id") int bId,
-										   @RequestParam(value = "table") int table,
+										   @RequestParam(value = "table", defaultValue = "-1") int table,
 										   @RequestParam(value = "round") int round,
-										   @RequestParam(value = "score", defaultValue = "2137") int score,
+										   @RequestParam(value = "score", defaultValue = "2") int score,
 										   @RequestParam(value = "game_notation", defaultValue = "") String gameNotation
 										   ){
 		int userId = -1;
@@ -475,7 +475,10 @@ where tournament_id = %d and black_player_id = %d;
 				int matchId;
 				if (rs.next()){
 					matchId = rs.getInt(1);
-					query = String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s' where match_id = %d;",score,table,gameNotation,matchId);
+					if(table==-1)
+						query = String.format("update matches set score = %d, game_notation = '%s' where match_id = %d;",score,gameNotation,matchId);
+					else
+						query = String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s' where match_id = %d;",score,table,gameNotation,matchId);
 					st.execute(query);
 					return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
 				}
@@ -498,11 +501,100 @@ where tournament_id = %d and black_player_id = %d;
 		}
 	}
 
+	@RequestMapping("/api/tournament/start/{tournamentId}")
+	public ResponseEntity<String> startTournament(@PathVariable (value="tournamentId")int tournamentId,
+												  @CookieValue (value="auth", defaultValue = "xd") String auth){
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+		try{
+			Statement st = connection.createStatement();
+			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			ResultSet rs = st.executeQuery(query);
+			if (rs.next()){
+				if (!rs.getString(1).equals("admin")){
+					return new ResponseEntity<>("You are not admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+				}else{
+					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
+					rs = st.executeQuery(query);
+					rs.next();
+					switch(rs.getInt(1)) {
+						case 1:
+							return new ResponseEntity<>("This tournament is in progress (CODE 409)", HttpStatus.CONFLICT);
+						case 2:
+							return new ResponseEntity<>("This tournament has finished (CODE 409)", HttpStatus.CONFLICT);
+					}
+					query = String.format("""
+							UPDATE tournament_roles
+							SET start_fide = (SELECT fide from users u2 where u2.user_id = tournament_roles.user_id)
+							where tournament_id = %d and role = 'player';
+							UPDATE tournaments
+							SET tournament_state = 1, start_date=now()
+							WHERE tournament_id = %d;""", tournamentId, tournamentId);
+					st.execute(query);
+					return new ResponseEntity<>("Tournament began! (CODE 200)", HttpStatus.OK);
+				}
+			}else{
+				return new ResponseEntity<>("Tournament doesn't exist or you are not member of the tournament (CODE 409)",HttpStatus.CONFLICT);
+			}
+		}catch (Exception e){
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+
+	@RequestMapping("/api/tournament/end/{tournamentId}")
+	public ResponseEntity<String> endTournament(@PathVariable (value="tournamentId")int tournamentId,
+												  @CookieValue (value="auth", defaultValue = "xd") String auth){
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+		try{
+			Statement st = connection.createStatement();
+			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			ResultSet rs = st.executeQuery(query);
+			if (rs.next()){
+				if (!rs.getString(1).equals("admin")){
+					return new ResponseEntity<>("You are not admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+				}else{
+					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
+					rs = st.executeQuery(query);
+					rs.next();
+					switch(rs.getInt(1)) {
+						case 0:
+							return new ResponseEntity<>("This tournament hasn't started (CODE 409)", HttpStatus.CONFLICT);
+						case 2:
+							return new ResponseEntity<>("This tournament has already finished (CODE 409)", HttpStatus.CONFLICT);
+					}
+					query = String.format("""
+							UPDATE tournaments
+							SET tournament_state = 2, end_date = now()
+							WHERE tournament_id = 3;""", tournamentId);
+					st.execute(query);
+					return new ResponseEntity<>("Tournament has ended! (CODE 200)", HttpStatus.OK);
+				}
+			}else{
+				return new ResponseEntity<>("Tournament doesn't exist or you are not member of the tournament (CODE 409)",HttpStatus.CONFLICT);
+			}
+		}catch (Exception e){
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+	}
+
 	@GetMapping("/api/homepage")
 	public ResponseEntity<String> homepage(){
 		try {
 			Statement st = connection.createStatement();
-			String query = "select name,location,time_control,start_date from tournaments where start_date>now() and start_date<now() + interval '3' month limit 100;";
+			String query = "select tournament_id, name,location,time_control,start_date from tournaments where start_date>now() and start_date<now() + interval '3' month limit 100;";
 			ResultSet rs = st.executeQuery(query);
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONArray result = new JSONArray();
