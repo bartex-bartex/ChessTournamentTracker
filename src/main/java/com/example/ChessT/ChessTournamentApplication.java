@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -266,6 +267,14 @@ public class ChessTournamentApplication {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
+
+
+
+
+
+
+
+
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
 			return new ResponseEntity<>("Data base error (probably no relevant tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -330,37 +339,60 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONObject result = new JSONObject();
-			JSONObject basicInfo = new JSONObject();
 			JSONArray opponents = new JSONArray();
-			JSONObject avgNScore = new JSONObject();
 
-			/*select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
-where tournament_id = 1 and white_player_id = 11
-union
-select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
-where tournament_id = 1 and black_player_id = 11*/
-			/*select avg(fide)::int from (select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
-where tournament_id = 1 and white_player_id = 11
-union
-select tournament_id, match_id, u.user_id as oponent_id, u.first_name, u.last_name, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
-where tournament_id = 1 and black_player_id = 11)*/
-			/*Select sum(CASE --do zrobienia w javie XD
-    WHEN score = 1 THEN 1
-    WHEN score = 0 THEN 0.5
-    else 0
-END) from (select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
-where tournament_id = 1 and white_player_id = 11
-union
-select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name, m.score, m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
-where tournament_id = 1 and black_player_id = 11)*/
 			if (rs.next()) {
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					result.put(rsmd.getColumnLabel(i), rs.getString(i));
 				}
+				query = String.format("""
+select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
+(CASE
+WHEN score = 1 THEN 1
+WHEN score = 0 THEN 0.5
+WHEN score = -1 THEN 0
+ELSE -1 END) as score,
+m.round, u.fide, m.table from matches m join users u on m.black_player_id = u.user_id
+where tournament_id = %d and white_player_id = %d
+union
+select tournament_id, match_id, u.user_id as opponent_id, u.first_name, u.last_name,
+(CASE
+WHEN score = 1 THEN 0
+WHEN score = 0 THEN 0.5
+WHEN score = -1 THEN 1
+ELSE -1 END) as score,
+m.round, u.fide, m.table from matches m join users u on m.white_player_id = u.user_id
+where tournament_id = %d and black_player_id = %d;
+						""",tournamentId,userId,tournamentId,userId);
+				rs = st.executeQuery(query);
+				rsmd = rs.getMetaData();
+				int avg = 0, j=0;
+				float score = 0;
+				float temp;
+				while (rs.next()) {
+					JSONObject row = new JSONObject();
+					for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+						if (rsmd.getColumnLabel(i).equals("fide"))
+							avg += rs.getInt(i);
+						if (rsmd.getColumnLabel(i).equals("score")){
+							temp = rs.getFloat(i);
+							if (temp == -1) {
+								row.put(rsmd.getColumnLabel(i),"nodata");
+								continue;
+							}
+							score += temp;
+						}
+						row.put(rsmd.getColumnLabel(i), rs.getString(i));
+ 					}
+					j++;
+					opponents.put(row);
+				}
+				result.put("opponents",opponents);
+				result.put("SUM",String.valueOf(score));
+				result.put("AVG_FIDE",String.valueOf(avg/j));
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<>("Data base error (probably no relevant player in that tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
-
+			return new ResponseEntity<>("Data base error (probably no relevant player in that tournament found) (CODE 409)", HttpStatus.CONFLICT);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
