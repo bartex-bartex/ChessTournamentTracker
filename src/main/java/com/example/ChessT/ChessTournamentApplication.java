@@ -150,7 +150,7 @@ public class ChessTournamentApplication {
 		return new ResponseEntity<>(result.toString(),HttpStatus.OK);
 	}
 
-	@RequestMapping("/api/user/login")
+	@RequestMapping("/api/user/login") // @PostMapping
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
@@ -174,7 +174,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/user/logout")
+	@RequestMapping("/api/user/logout") //@DeleteMapping
 	public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "xd") String auth) {
 		try {
 			if (checkFalseCookie(auth)) {
@@ -192,7 +192,7 @@ public class ChessTournamentApplication {
 
 
 
-	@RequestMapping("/api/user/register")
+	@RequestMapping("/api/user/register") //@PostMapping
 	public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
 										   @RequestParam(value = "username") String username,
 										   @RequestParam(value = "password") String password,
@@ -257,7 +257,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/create")
+	@RequestMapping("/api/tournament/create") //@PostMapping
 	public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										   @RequestParam(value = "tournamentName") String name,
 										   @RequestParam(value = "location") String location,
@@ -274,6 +274,26 @@ public class ChessTournamentApplication {
 		catch (Exception e) {
 			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 		}
+
+		if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",startDate))
+			return new ResponseEntity<>("Wrong start date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);
+
+		if(!GenericValidator.isDate(startDate,"yyyy-MM-dd",true)){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+		if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",endDate))
+			return new ResponseEntity<>("Wrong end date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);
+
+		if(!GenericValidator.isDate(endDate,"yyyy-MM-dd",true)){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+		if(rounds <= 0){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+
 
 		try {
 			Statement st = connection.createStatement();
@@ -301,7 +321,7 @@ public class ChessTournamentApplication {
 
 	}
 
-	@RequestMapping("/api/tournament/join/{tournamentId}")
+	@RequestMapping("/api/tournament/join/{tournamentId}") //@PostMapping
 	public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										@PathVariable int tournamentId){
 		int userId = -1;
@@ -499,7 +519,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/round/addmatch")
+	@RequestMapping("/api/tournament/round/addmatch") // @PutMapping
 	public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										   @RequestParam(value = "tournament_id") int tournamentId,
 										   @RequestParam(value = "white_player_id") int wId,
@@ -581,12 +601,9 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/round/removematch")
+	@RequestMapping("/api/tournament/round/removematch") // @DeleteMapping
 	public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
-										   @RequestParam(value = "tournament_id") int tournamentId,
-										   @RequestParam(value = "white_player_id") int wId,
-										   @RequestParam(value = "black_player_id") int bId,
-										   @RequestParam(value = "round") int round
+										   @RequestParam(value = "matchId") int matchId
 	){
 		int userId = -1;
 		try{
@@ -597,28 +614,20 @@ public class ChessTournamentApplication {
 		}
 		try {
 			Statement st = connection.createStatement();
-			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			String query = String.format("select tournament_id from matches where match_id = %d;",matchId);
 			ResultSet rs = st.executeQuery(query);
-			if (rs.next() && rs.getString(1).equals("admin")){
-				query = String.format("select count(*), rounds from tournament_roles join tournaments using(tournament_id) where tournament_id = %d and user_id in (%d,%d) group by rounds;",tournamentId,wId,bId);
+			if (rs.next()) {
+				int tournamentId = rs.getInt(1);
+				query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;", tournamentId, userId);
 				rs = st.executeQuery(query);
-				rs.next();
-				if (rs.getInt(1) < 2 || wId==bId)
-					return new ResponseEntity<>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
-				if (round > rs.getInt(2) || round<1)
-					return new ResponseEntity<>("Invalid round number (CODE 409)",HttpStatus.CONFLICT);
-				query = String.format("select match_id from matches where tournament_id = %d and white_player_id in (%d,%d) and black_player_id in (%d,%d) and round = %d",tournamentId,wId,bId, wId, bId,round);
-				rs = st.executeQuery(query);
-				int matchId;
-				if (rs.next()){
-					matchId = rs.getInt(1);
-					query = String.format("delete from fide_changes where match_id = %d; delete from matches where match_id = %d;",matchId, matchId);
+				if (rs.next() && rs.getString(1).equals("admin")) {
+					query = String.format("delete from fide_changes where match_id = %d; delete from matches where match_id = %d;", matchId, matchId);
 					st.execute(query);
-					return new ResponseEntity<>("Match successfully removed (CODE 200)",HttpStatus.OK);
+					return new ResponseEntity<>("Match sucessfully deleted (CODE 200)", HttpStatus.OK);
 				}
-				return new ResponseEntity<>("No such match in this round with those players (CODE 200)",HttpStatus.OK);
+				return new ResponseEntity<>("No permissions to remove match (CODE 409)", HttpStatus.CONFLICT);
 			}
-			return new ResponseEntity<>("No such tournament or no permissions to add match (CODE 409)",HttpStatus.CONFLICT);
+			return new ResponseEntity<>("No such match found (CODE 409)",HttpStatus.CONFLICT);
 		}
 		catch (Exception e)
 		{
@@ -626,7 +635,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/tournament/start/{tournamentId}")
+	@RequestMapping("/api/tournament/start/{tournamentId}") //@PutMapping
 	public ResponseEntity<String> startTournament(@PathVariable (value="tournamentId")int tournamentId,
 												  @CookieValue (value="auth", defaultValue = "xd") String auth){
 		int userId = -1;
@@ -672,7 +681,7 @@ public class ChessTournamentApplication {
 
 	}
 
-	@RequestMapping("/api/tournament/end/{tournamentId}")
+	@RequestMapping("/api/tournament/end/{tournamentId}") //@PutMapping
 	public ResponseEntity<String> endTournament(@PathVariable (value="tournamentId")int tournamentId,
 												  @CookieValue (value="auth", defaultValue = "xd") String auth){
 		int userId = -1;
