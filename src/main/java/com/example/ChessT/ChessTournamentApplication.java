@@ -1,5 +1,6 @@
 package com.example.ChessT;
 
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import netscape.javascript.JSObject;
@@ -18,6 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -63,12 +67,18 @@ public class ChessTournamentApplication {
 		try{
 			Statement st = connection.createStatement();
 			String query = String.format("""
-                    UPDATE users
-                    SET fide = fide+coalesce((SELECT sum(fc.value) from fide_changes fc
-                    join matches m using(match_id) join tournaments t using(tournament_id)
-                    where tournament_state = 2 and extract('MONTH' from end_date) = extract('MONTH' from now() - interval '1' month)
-                    and extract('month' from end_date) = extract('month' from now() - interval '1' month) and fc.user_id = users.user_id), 0);
-                    """);
+					UPDATE users
+					SET fide = fide+coalesce((SELECT sum(fc.value) from fide_changes fc
+					join matches m using(match_id) join tournaments t using(tournament_id)
+					where tournament_state = 2 and extract('MONTH' from end_date) = extract('MONTH' from now() - interval '1' month)
+					and extract('month' from end_date) = extract('month' from now() - interval '1' month) and fc.user_id = users.user_id), 0);
+					UPDATE users
+					set k = (case
+							when fide > 2400 or k=10 then 10
+							when fide > 2300 or k=20 then 20
+							when date_of_birth < now() - interval '18' year then 20
+							else 40 end);
+								""");
 			st.execute(query);
 
 		}catch (Exception e){
@@ -241,11 +251,14 @@ public class ChessTournamentApplication {
 			rs.next();
 			int rowCount = rs.getInt(1);
 			if (rowCount == 0) {
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-d");
+				LocalDate localDate = LocalDate.parse(date, formatter);
+				boolean adult = Period.between(LocalDate.parse(date, formatter),LocalDate.now()).getYears()>=18;
 				query = "select coalesce(max(user_id),0) from users";
 				rs = st.executeQuery(query);
 				rs.next();
 				int id = 1 + rs.getInt(1);
-				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s','%d')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
+				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s',%d, %d)", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide, kValue(fide, adult));
 				st.execute(query);
 				addAuthCookie(response, id);
 				return new ResponseEntity<>("Successfully registered (CODE 200)", HttpStatus.OK);
@@ -524,9 +537,10 @@ public class ChessTournamentApplication {
 			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next() && rs.getString(1).equals("admin")){
-				query = String.format("select count(*), rounds from tournament_roles join tournaments using(tournament_id) where tournament_id = %d and user_id in (%d,%d) group by rounds;",tournamentId,wId,bId);
+				query = String.format("select count(*), coalesce(rounds, 0) from tournament_roles join tournaments using(tournament_id) where tournament_id = %d and user_id in (%d,%d) group by rounds;",tournamentId,wId,bId);
 				rs = st.executeQuery(query);
-				rs.next();
+				if(!rs.next())
+					return new ResponseEntity<>("At least one player has not joined this tournament (CODE 409)", HttpStatus.CONFLICT);
 				if (rs.getInt(1) < 2 || wId==bId)
 					return new ResponseEntity<>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
 				if (round > rs.getInt(2) || round<1)
@@ -560,6 +574,34 @@ public class ChessTournamentApplication {
 								String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s', white_player_id = %d, black_player_id=%d where match_id = %d;", score, table, gameNotation, wId, bId, matchId);
                     };
 					st.execute(query);
+					if(score != 2){
+						query = String.format("select count(*) from fide_changes where match_id = %d;", matchId);
+						rs = st.executeQuery(query);
+						rs.next();
+						String query2 = String.format("""
+								SELECT m.white_player_id, tr.start_fide, tr.k from matches m
+								join tournament_roles tr on m.white_player_id = tr.user_id and m.tournament_id = tr.tournament_id
+								where match_id = %d
+								union
+								SELECT m.black_player_id, tr.start_fide, tr.k from matches m
+								join tournament_roles tr on m.black_player_id = tr.user_id and m.tournament_id = tr.tournament_id
+								where match_id = %d;""", matchId, matchId);
+						Statement st2 = connection.createStatement();
+						ResultSet rs2 = st2.executeQuery(query2);
+						rs2.next();
+						int wR = rs2.getInt(2), wK = rs2.getInt(3);
+						rs2.next();
+						int bR = rs2.getInt(2), bK = rs2.getInt(3);
+						int wF = fideChange(wR, bR, wK, (score+1.f)/2.f);
+						int bF = fideChange(bR, wR, bK, (-score+1.f)/2.f);
+						if(rs.getInt(1)==0){
+							query = String.format("Insert into fide_changes values (%d, %d, %d), (%d, %d, %d);", matchId, wId, wF, matchId, bId, bF);
+						}
+						else{
+							query = String.format("update fide_changes set value = %d where match_id = %d and user_id = %d; update fide_changes set value = %d where match_id = %d and user_id = %d;", wF, matchId, wId, bF, matchId, bId);
+						}
+						st.execute(query);
+					}
 					return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
 				}
 				else {
@@ -577,7 +619,7 @@ public class ChessTournamentApplication {
 		}
 		catch (Exception e)
 		{
-			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -655,7 +697,8 @@ public class ChessTournamentApplication {
 					}
 					query = String.format("""
 							UPDATE tournament_roles
-							SET start_fide = (SELECT fide from users u2 where u2.user_id = tournament_roles.user_id)
+							SET start_fide = (SELECT fide from users u2 where u2.user_id = tournament_roles.user_id),
+							k = (SELECT u2.k from users u2 where u2.user_id = tournament_roles.user_id)
 							where tournament_id = %d and role = 'player';
 							UPDATE tournaments
 							SET tournament_state = 1, start_date=now()
@@ -821,4 +864,16 @@ public class ChessTournamentApplication {
 				.matches();
 	}
 
+	private static int kValue(int fide, boolean adult){
+		if(fide > 2400)
+			return 10;
+		if(!adult && fide < 2300)
+			return 40;
+		return 20;
+	}
+
+	private static int fideChange(int R, int oR, int K, float S){
+		float p = (float) (1.f/(1+Math.pow(10.f, (oR-R)/400.f)));
+		return (int) (K*(S - p));
+	}
 }
