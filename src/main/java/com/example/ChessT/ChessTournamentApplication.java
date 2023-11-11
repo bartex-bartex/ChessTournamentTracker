@@ -7,6 +7,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import org.json.*;
@@ -23,8 +25,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
+
 @SpringBootApplication
 @RestController
+@EnableScheduling
 public class ChessTournamentApplication {
 	static Connection connection = null;
 	static String temp;
@@ -46,6 +50,24 @@ public class ChessTournamentApplication {
 			*/
 		}catch (Exception e){
 			temp = e.getMessage();
+		}
+	}
+
+	@Scheduled(cron = "0 10 0 * * ?")
+	public void fideUpdate(){
+		try{
+			Statement st = connection.createStatement();
+			String query = String.format("""
+					UPDATE users
+					SET fide = fide+coalesce((SELECT sum(fc.value) from fide_changes fc
+					join matches m using(match_id) join tournaments t using(tournament_id)
+					where tournament_state = 2 and extract('MONTH' from end_date) = extract('MONTH' from now() - interval '1' month)
+					and extract('month' from end_date) = extract('month' from now() - interval '1' month) and fc.user_id = users.user_id), 0);
+					""");
+			st.execute(query);
+
+		}catch (Exception e){
+			return;
 		}
 	}
 
@@ -203,14 +225,14 @@ public class ChessTournamentApplication {
 
 	@RequestMapping("/api/tournament/create")
 	public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "xd") String auth,
-										   @RequestParam(value = "tournamentName") String name,
-										   @RequestParam(value = "location") String location,
-										   @RequestParam(value = "organizer") String organizer,
-										   @RequestParam(value = "timeControl") String timeControl,
-										   @RequestParam(value = "startDate") String startDate,
-										   @RequestParam(value = "endDate") String endDate,
-										   @RequestParam(value = "rounds") int rounds,
-										   @RequestParam(value = "info") String info) {
+										 @RequestParam(value = "tournamentName") String name,
+										 @RequestParam(value = "location") String location,
+										 @RequestParam(value = "organizer") String organizer,
+										 @RequestParam(value = "timeControl") String timeControl,
+										 @RequestParam(value = "startDate") String startDate,
+										 @RequestParam(value = "endDate") String endDate,
+										 @RequestParam(value = "rounds") int rounds,
+										 @RequestParam(value = "info") String info) {
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
@@ -247,7 +269,7 @@ public class ChessTournamentApplication {
 
 	@RequestMapping("/api/tournament/join/{tournamentId}")
 	public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "xd") String auth,
-										@PathVariable int tournamentId){
+									   @PathVariable int tournamentId){
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
@@ -427,7 +449,7 @@ public class ChessTournamentApplication {
 							score += temp;
 						}
 						row.put(rsmd.getColumnLabel(i), rs.getString(i));
- 					}
+					}
 					j++;
 					opponents.put(row);
 				}
@@ -452,7 +474,7 @@ public class ChessTournamentApplication {
 										   @RequestParam(value = "round") int round,
 										   @RequestParam(value = "score", defaultValue = "2") int score,
 										   @RequestParam(value = "game_notation", defaultValue = "") String gameNotation
-										   ){
+	){
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
@@ -549,7 +571,7 @@ public class ChessTournamentApplication {
 
 	@RequestMapping("/api/tournament/end/{tournamentId}")
 	public ResponseEntity<String> endTournament(@PathVariable (value="tournamentId")int tournamentId,
-												  @CookieValue (value="auth", defaultValue = "xd") String auth){
+												@CookieValue (value="auth", defaultValue = "xd") String auth){
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
@@ -621,7 +643,7 @@ public class ChessTournamentApplication {
 		int targetStringLength = 32;
 		Random random = new Random();
 
-        return random.ints(leftLimit, rightLimit + 1)
+		return random.ints(leftLimit, rightLimit + 1)
 				.filter(i -> (i <= 57 || i >= 65) && (i <= 90 || i >= 97))
 				.limit(targetStringLength)
 				.collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
