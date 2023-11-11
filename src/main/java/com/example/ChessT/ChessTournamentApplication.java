@@ -8,6 +8,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import org.json.*;
 
@@ -25,6 +27,7 @@ import java.util.stream.IntStream;
 
 @SpringBootApplication
 @RestController
+@EnableScheduling
 public class ChessTournamentApplication {
 	static Connection connection = null;
 	static String temp;
@@ -46,6 +49,25 @@ public class ChessTournamentApplication {
 			*/
 		}catch (Exception e){
 			temp = e.getMessage();
+		}
+	}
+
+
+	@Scheduled(cron = "0 10 0 * * ?")
+	public void fideUpdate(){
+		try{
+			Statement st = connection.createStatement();
+			String query = String.format("""
+                    UPDATE users
+                    SET fide = fide+coalesce((SELECT sum(fc.value) from fide_changes fc
+                    join matches m using(match_id) join tournaments t using(tournament_id)
+                    where tournament_state = 2 and extract('MONTH' from end_date) = extract('MONTH' from now() - interval '1' month)
+                    and extract('month' from end_date) = extract('month' from now() - interval '1' month) and fc.user_id = users.user_id), 0);
+                    """);
+			st.execute(query);
+
+		}catch (Exception e){
+			return;
 		}
 	}
 
@@ -436,14 +458,14 @@ public class ChessTournamentApplication {
 				result.put("AVG_FIDE",String.valueOf(avg/j));
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<>("Data base error (probably no relevant player in that tournament found) (CODE 409)", HttpStatus.CONFLICT);
+			return new ResponseEntity<>("No such tournament, user or invalid role assigned to that user (CODE 409)", HttpStatus.CONFLICT);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
-	@RequestMapping("/api/tournament/round/addmatch") // "/api/{tournament_id}/{round}/addmatch" ???
+	@RequestMapping("/api/tournament/round/addmatch")
 	public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "xd") String auth,
 										   @RequestParam(value = "tournament_id") int tournamentId,
 										   @RequestParam(value = "white_player_id") int wId,
@@ -453,6 +475,9 @@ public class ChessTournamentApplication {
 										   @RequestParam(value = "score", defaultValue = "2") int score,
 										   @RequestParam(value = "game_notation", defaultValue = "") String gameNotation
 										   ){
+		if(score <-1 || score >2){
+			return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
+		}
 		int userId = -1;
 		try{
 			userId = checkCookie(auth);
@@ -468,17 +493,38 @@ public class ChessTournamentApplication {
 				query = String.format("select count(*) from tournament_roles where tournament_id = %d and user_id in (%d,%d);",tournamentId,wId,bId);
 				rs = st.executeQuery(query);
 				rs.next();
-				if (rs.getInt(1) < 2)
+				if (rs.getInt(1) < 2 || wId==bId)
 					return new ResponseEntity<>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
-				query = String.format("select match_id from matches where tournament_id = %d and white_player_id = %d and black_player_id = %d and round = %d",tournamentId,wId,bId,round);
+				if (round > rs.getInt(2) || round<1)
+					return new ResponseEntity<>("Invalid round number (CODE 409)",HttpStatus.CONFLICT);
+				query = String.format("select match_id from matches where tournament_id = %d and white_player_id in (%d,%d) and black_player_id in (%d,%d) and round = %d",tournamentId,wId,bId, wId, bId,round);
 				rs = st.executeQuery(query);
 				int matchId;
 				if (rs.next()){
 					matchId = rs.getInt(1);
-					if(table==-1)
-						query = String.format("update matches set score = %d, game_notation = '%s' where match_id = %d;",score,gameNotation,matchId);
-					else
-						query = String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s' where match_id = %d;",score,table,gameNotation,matchId);
+					int mode = 0;
+					if(table == -1) mode+=1;
+					if(score == 2) mode+=2;
+					if(gameNotation.isEmpty()) mode+=4;
+
+                    query = switch (mode) {
+                        case 1 ->
+                                String.format("update matches set score = %d, game_notation = '%s', white_player_id = %d, black_player_id=%d where match_id = %d;", score, gameNotation, wId, bId, matchId);
+                        case 2 ->
+                                String.format("update matches set \"table\" = %d, game_notation = '%s', white_player_id = %d, black_player_id=%d where match_id = %d;", table, gameNotation, wId, bId, matchId);
+                        case 3 ->
+                                String.format("update matches set game_notation = '%s', white_player_id = %d, black_player_id=%d where match_id = %d;", gameNotation, wId, bId, matchId);
+                        case 4 ->
+                                String.format("update matches set score = %d, \"table\" = %d, white_player_id = %d, black_player_id=%d where match_id = %d;", score, table, wId, bId, matchId);
+                        case 5 ->
+                                String.format("update matches set score = %d, white_player_id = %d, black_player_id=%d where match_id = %d;", score, wId, bId, matchId);
+                        case 6 ->
+                                String.format("update matches set \"table\" = %d, white_player_id = %d, black_player_id=%d where match_id = %d;", table, wId, bId, matchId);
+                        case 7 ->
+                                String.format("update matches set white_player_id = %d, black_player_id=%d where match_id = %d;", wId, bId, matchId);
+                        default ->
+								String.format("update matches set score = %d, \"table\" = %d, game_notation = '%s', white_player_id = %d, black_player_id=%d where match_id = %d;", score, table, gameNotation, wId, bId, matchId);
+                    };
 					st.execute(query);
 					return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
 				}
@@ -493,7 +539,7 @@ public class ChessTournamentApplication {
 				}
 
 			}
-			return new ResponseEntity<>("No permissions to add match (CODE 403)",HttpStatus.FORBIDDEN);
+			return new ResponseEntity<>("No such tournament or no permissions to add match (CODE 409)",HttpStatus.CONFLICT);
 		}
 		catch (Exception e)
 		{
@@ -517,7 +563,7 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next()){
 				if (!rs.getString(1).equals("admin")){
-					return new ResponseEntity<>("You are not admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+					return new ResponseEntity<>("User is not an admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
 				}else{
 					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
 					rs = st.executeQuery(query);
@@ -539,7 +585,7 @@ public class ChessTournamentApplication {
 					return new ResponseEntity<>("Tournament began! (CODE 200)", HttpStatus.OK);
 				}
 			}else{
-				return new ResponseEntity<>("Tournament doesn't exist or you are not member of the tournament (CODE 409)",HttpStatus.CONFLICT);
+				return new ResponseEntity<>("No such tournament or user is not a member of the tournament (CODE 409)",HttpStatus.CONFLICT);
 			}
 		}catch (Exception e){
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -563,7 +609,7 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next()){
 				if (!rs.getString(1).equals("admin")){
-					return new ResponseEntity<>("You are not admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+					return new ResponseEntity<>("User is not an admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
 				}else{
 					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
 					rs = st.executeQuery(query);
@@ -582,7 +628,7 @@ public class ChessTournamentApplication {
 					return new ResponseEntity<>("Tournament has ended! (CODE 200)", HttpStatus.OK);
 				}
 			}else{
-				return new ResponseEntity<>("Tournament doesn't exist or you are not member of the tournament (CODE 409)",HttpStatus.CONFLICT);
+				return new ResponseEntity<>("No such tournament or user is not a member of the tournament (CODE 409)",HttpStatus.CONFLICT);
 			}
 		}catch (Exception e){
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
