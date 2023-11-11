@@ -21,9 +21,10 @@ import java.sql.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+import org.apache.commons.validator.GenericValidator;
 
 @SpringBootApplication
 @RestController
@@ -31,6 +32,10 @@ import java.util.stream.IntStream;
 public class ChessTournamentApplication {
 	static Connection connection = null;
 	static String temp;
+	static String regexMailValidationPattern = "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:"
+			+ "(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|"
+			+ "\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.)"
+			+ "{3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])";
 	public static void main(String[] args) {
 		SpringApplication.run(ChessTournamentApplication.class, args);
 		try {
@@ -185,6 +190,8 @@ public class ChessTournamentApplication {
 		}
 	}
 
+
+
 	@RequestMapping("/api/user/register")
 	public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
 										   @RequestParam(value = "username") String username,
@@ -195,23 +202,50 @@ public class ChessTournamentApplication {
 										   @RequestParam(value = "last_name") String lastname,
 										   @RequestParam(value = "sex") String sex,
 										   @RequestParam(value = "date_of_birth") String date,
-										   @RequestParam(value = "fide") String fide,
+										   @RequestParam(value = "fide") int fide,
 										   HttpServletResponse response) {
 		try {
-			if (!checkFalseCookie(auth)) {
+			if (!checkFalseCookie(auth))
 				return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
+			//Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character
+			if(!validate("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",password))
+				return new ResponseEntity<>("Password is invalid (CODE 400)", HttpStatus.BAD_REQUEST);
+
+			if(!password.equals(password2))
+				return new ResponseEntity<>("Passwords are not equal (CODE 400)", HttpStatus.CONFLICT);
+
+			if(!validate(regexMailValidationPattern,mail))
+				return new ResponseEntity<>("Mail is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
+
+			if(!validate("^[A-Za-z]+(?:[' -][A-Za-z]+)*$",name))
+				return new ResponseEntity<>("First name is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
+
+			if(!validate("^[A-Za-z]+(?:[' -][A-Za-z]+)*$",lastname))
+				return new ResponseEntity<>("Last is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
+
+			if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",date))
+				return new ResponseEntity<>("Wrong date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);
+
+			if(!GenericValidator.isDate(date,"yyyy-MM-dd",true)){
+				return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
 			}
+
+
+			if(fide < 0)
+				return new ResponseEntity<>("Fide is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
+
+
 			Statement st = connection.createStatement();
 			String query = String.format("select count(x) from (select * from users where username = '%s' or mail = '%s') as x", username, mail);
 			ResultSet rs = st.executeQuery(query);
 			rs.next();
 			int rowCount = rs.getInt(1);
-			if (rowCount == 0 && password.equals(password2)) {
+			if (rowCount == 0) {
 				query = "select coalesce(max(user_id),0) from users";
 				rs = st.executeQuery(query);
 				rs.next();
 				int id = 1 + rs.getInt(1);
-				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s','%s')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
+				query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s','%d')", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide);
 				st.execute(query);
 				addAuthCookie(response, id);
 				return new ResponseEntity<>("Successfully registered (CODE 200)", HttpStatus.OK);
@@ -781,4 +815,10 @@ public class ChessTournamentApplication {
 		}
 		return hexString.toString();
 	}
+	public static boolean validate(String regexPattern, String textToValidate){
+		return Pattern.compile(regexPattern)
+				.matcher(textToValidate)
+				.matches();
+	}
+
 }

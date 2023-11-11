@@ -20,6 +20,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	implementation 'org.postgresql:postgresql:42.6.0'
 	implementation 'org.json:json:20231013'
+	implementation 'commons-validator:commons-validator:1.7'
 }
 
 tasks.named('test') {
