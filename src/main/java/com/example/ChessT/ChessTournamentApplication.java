@@ -275,6 +275,26 @@ public class ChessTournamentApplication {
 			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
 		}
 
+		if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",startDate))
+			return new ResponseEntity<>("Wrong start date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);
+
+		if(!GenericValidator.isDate(startDate,"yyyy-MM-dd",true)){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+		if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",endDate))
+			return new ResponseEntity<>("Wrong end date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);
+
+		if(!GenericValidator.isDate(endDate,"yyyy-MM-dd",true)){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+		if(rounds <= 0){
+			return new ResponseEntity<>("Date is invalid", HttpStatus.BAD_REQUEST);
+		}
+
+
+
 		try {
 			Statement st = connection.createStatement();
 			String query = String.format("select count(x) from (select * from tournaments where name = '%s') as x", name);
