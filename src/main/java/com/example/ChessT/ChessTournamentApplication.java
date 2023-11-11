@@ -490,7 +490,7 @@ public class ChessTournamentApplication {
 			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next() && rs.getString(1).equals("admin")){
-				query = String.format("select count(*) from tournament_roles where tournament_id = %d and user_id in (%d,%d);",tournamentId,wId,bId);
+				query = String.format("select count(*), rounds from tournament_roles join tournaments using(tournament_id) where tournament_id = %d and user_id in (%d,%d) group by rounds;",tournamentId,wId,bId);
 				rs = st.executeQuery(query);
 				rs.next();
 				if (rs.getInt(1) < 2 || wId==bId)
@@ -544,6 +544,51 @@ public class ChessTournamentApplication {
 		catch (Exception e)
 		{
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@RequestMapping("/api/tournament/round/removematch")
+	public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
+										   @RequestParam(value = "tournament_id") int tournamentId,
+										   @RequestParam(value = "white_player_id") int wId,
+										   @RequestParam(value = "black_player_id") int bId,
+										   @RequestParam(value = "round") int round
+	){
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
+			ResultSet rs = st.executeQuery(query);
+			if (rs.next() && rs.getString(1).equals("admin")){
+				query = String.format("select count(*), rounds from tournament_roles join tournaments using(tournament_id) where tournament_id = %d and user_id in (%d,%d) group by rounds;",tournamentId,wId,bId);
+				rs = st.executeQuery(query);
+				rs.next();
+				if (rs.getInt(1) < 2 || wId==bId)
+					return new ResponseEntity<>("One or more player ids are invalid (CODE 409)",HttpStatus.CONFLICT);
+				if (round > rs.getInt(2) || round<1)
+					return new ResponseEntity<>("Invalid round number (CODE 409)",HttpStatus.CONFLICT);
+				query = String.format("select match_id from matches where tournament_id = %d and white_player_id in (%d,%d) and black_player_id in (%d,%d) and round = %d",tournamentId,wId,bId, wId, bId,round);
+				rs = st.executeQuery(query);
+				int matchId;
+				if (rs.next()){
+					matchId = rs.getInt(1);
+					query = String.format("delete from fide_changes where match_id = %d; delete from matches where match_id = %d;",matchId, matchId);
+					st.execute(query);
+					return new ResponseEntity<>("Match successfully removed (CODE 200)",HttpStatus.OK);
+				}
+				return new ResponseEntity<>("No such match in this round with those players (CODE 200)",HttpStatus.OK);
+			}
+			return new ResponseEntity<>("No such tournament or no permissions to add match (CODE 409)",HttpStatus.CONFLICT);
+		}
+		catch (Exception e)
+		{
+			return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
