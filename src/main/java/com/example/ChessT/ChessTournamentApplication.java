@@ -541,7 +541,7 @@ public class ChessTournamentApplication {
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONObject result = new JSONObject();
 			if (!rs.next()) {
-				return new ResponseEntity<>("Data base error (probably no relevant tournament found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+				return new ResponseEntity<>("Data base error (probably no relevant tournament found) (CODE 409)", HttpStatus.CONFLICT);
 			}
 			boolean started = false;
 			for (int i = 1; i <= rsmd.getColumnCount(); i++) {
@@ -596,7 +596,7 @@ public class ChessTournamentApplication {
 				}
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			return new ResponseEntity<>("Data base error (probably no relevant match found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Data base error (probably no relevant match found) (CODE 409)", HttpStatus.CONFLICT);
 
 		}catch (Exception e){
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -621,7 +621,7 @@ public class ChessTournamentApplication {
 				result.put(row);
 			}
 			if (result.isEmpty())
-				return new ResponseEntity<>("Data base error (probably no relevant matches found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+				return new ResponseEntity<>("Data base error (probably no relevant matches found) (CODE 409)", HttpStatus.CONFLICT);
 			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 		}
 		catch (Exception e){
@@ -630,7 +630,7 @@ public class ChessTournamentApplication {
 	}
 	@GetMapping("/api/tournament/player")
 	public ResponseEntity<String> playerInfo(@RequestParam(value = "tournamentId") int tournamentId,
-											 @RequestParam(value = "userId") int userId){ //not done yet // nie wiem co oznacza ten komentarz xd
+											 @RequestParam(value = "userId") int userId){
 		try {
 			Statement st = connection.createStatement();
 				String query = String.format("select u.user_id, u.username, u.first_name, u.last_name, tr.start_fide, tr.tournament_id, coalesce(f.change_in_rank,0) as rank_change from users u join tournament_roles tr on u.user_id = tr.user_id left join (select user_id, sum(value) as change_in_rank from fide_changes join matches using(match_id) where tournament_id = %d group by user_id) f on tr.user_id = f.user_id where tr.role = 'player' and tr.tournament_id = %d and u.user_id = %d;",tournamentId,tournamentId,userId);
@@ -690,13 +690,13 @@ public class ChessTournamentApplication {
 					opponents.put(row);
 				}
 				query = String.format("select bye from tournament_roles where user_id = %d and tournament_id = %d;",userId,tournamentId);
-				st.execute(query);
+				rs = st.executeQuery(query);
 				rs.next();
 				int bye = rs.getInt(1);
 				result.put("bye",bye);
 
 				result.put("opponents",opponents);
-				result.put("sum",String.valueOf(score) + (bye != 0 ? 1.0:0.0));
+				result.put("sum",String.valueOf(score + (bye != 0 ? 1:0)));
 				result.put("avg_fide",String.valueOf(avg/j));
 
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
@@ -751,7 +751,7 @@ public class ChessTournamentApplication {
 				result.put(row);
 			}
 			if (result.isEmpty())
-				return new ResponseEntity<>("Data base error (probably no relevant results found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+				return new ResponseEntity<>("Data base error (probably no relevant results found) (CODE 409)", HttpStatus.CONFLICT);
 			return new ResponseEntity<>(result.toString(),HttpStatus.OK);
 		}catch(Exception e){
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -760,13 +760,13 @@ public class ChessTournamentApplication {
 
 	@RequestMapping("/api/tournament/round/addmatch") // @PutMapping
 	public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "xd") String auth,
-										   @RequestParam(value = "tournament_id") int tournamentId,
-										   @RequestParam(value = "white_player_id") int wId,
-										   @RequestParam(value = "black_player_id") int bId,
+										   @RequestParam(value = "tournamentId") int tournamentId,
+										   @RequestParam(value = "whitePlayerId") int wId,
+										   @RequestParam(value = "blackPlayerId") int bId,
 										   @RequestParam(value = "table", defaultValue = "-1") int table,
 										   @RequestParam(value = "round") int round,
 										   @RequestParam(value = "score", defaultValue = "2") int score,
-										   @RequestParam(value = "game_notation", defaultValue = "") String gameNotation
+										   @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
 										   ){
 		if(score <-1 || score >2){
 			return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
