@@ -997,7 +997,7 @@ public class ChessTournamentApplication {
 					query = String.format("""
 							UPDATE tournaments
 							SET tournament_state = 2, end_date = now()
-							WHERE tournament_id = 3;""", tournamentId);
+							WHERE tournament_id = %d;""", tournamentId);
 					st.execute(query);
 					return new ResponseEntity<>("Tournament has ended! (CODE 200)", HttpStatus.OK);
 				}
@@ -1026,7 +1026,7 @@ public class ChessTournamentApplication {
 				result.put(row);
 			}
 			if (result.isEmpty())
-				return new ResponseEntity<>("Data base error (probably no relevant tournaments found) (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+				return new ResponseEntity<>("Data base error (probably no relevant tournaments found) (CODE 409)", HttpStatus.CONFLICT);
 			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 
 		}catch (Exception e){
