@@ -83,7 +83,6 @@ public class ChessTournamentApplication {
 		public Set<Integer> alreadyPlayed = new HashSet<>();
 		public int playRatio;
 		public int canPlayWith(Player player) { // 1 - can play as white, 0 - can play as black, -1 - cannot play
-
 			if (played || player.played || alreadyPlayed.contains(player.userId) || (playRatio >= 2 && player.playRatio >= 2) || (playRatio <= -2 && player.playRatio <= -2))
 				return -1;
 			if (playRatio > player.playRatio)
@@ -122,31 +121,60 @@ public class ChessTournamentApplication {
 				st.execute(query);
 			}
 			for (int i=start;i<list.size();i+=2){
-				query = String.format("insert into matches (match_id,tournament_id,white_player_id,black_player_id,round)\n" +
-						"values ((select 1+max(match_id) from matches),%d,%d,%d,1);",tournamentId,list.get(i).userId,list.get(i+1).userId);
+				query = String.format("insert into matches (match_id,tournament_id,white_player_id,black_player_id,round,\"table\")\n" +
+						"values ((select 1+coalesce(max(match_id),0) from matches),%d,%d,%d,1,%d);",tournamentId,list.get(i).userId,list.get(i+1).userId,i/2+1);
 				st.execute(query);
 			}
 			return true;
 		}catch(Exception e){
+			System.out.print(e.getMessage());
 			return false;
 		}
 	}
-	@RequestMapping("/api/tournament/generateRoundPairings/{tournamentId}/{round}")
-	public ResponseEntity<String> generateRoundPairings(@PathVariable(value = "tournamentId") int tournamentId,
-														@PathVariable(value = "round") int round){
-		//walidacja czy w runda < max ilosc rund w turnieju
-		//walidacja czy juz nie ma jakiegos meczu w tej rundzie czyli czy nie jest juz wygenerowany
-		//walidacja czy jestes adminem turnieju bo nie robie tego jeszcze xd
-
+	@RequestMapping("/api/tournament/generateRoundPairings")
+	public ResponseEntity<String> generateRoundPairings(@RequestParam(value = "tournamentId") int tournamentId,
+														@RequestParam(value = "round") int round,
+														@CookieValue(value = "auth") String auth){
 		ArrayList<Player> list = new ArrayList<Player>();
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
+		}
+
 		try{
 			Statement st = connection.createStatement();
-			/*String query = String.format();
-			ResultSet rs = st.executeQuery(query);*/
-
-
-			String query = String.format("select user_id, start_fide, bye from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
+			String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;",tournamentId,userId);
 			ResultSet rs = st.executeQuery(query);
+			if (!rs.next() || !rs.getString(1).equals("admin"))
+				return new ResponseEntity<>("User is not an admin of this tournament (CODE 401)",HttpStatus.UNAUTHORIZED);
+
+			query = String.format("select rounds, tournament_state from tournaments where tournament_id = %d;",tournamentId);
+			rs = st.executeQuery(query);
+			if (!rs.next() || rs.getInt(1) < round)
+				return new ResponseEntity<>("Round exceeds total amount of rounds in the tournament (CODE 409)",HttpStatus.CONFLICT);
+			if (round <= 1)
+				return new ResponseEntity<>("Round is invalid number",HttpStatus.CONFLICT);
+
+			if (rs.getInt(2) != 1)
+				return new ResponseEntity<>("Tournament hasn't started yet or is already finished (CODE 409)",HttpStatus.CONFLICT);
+
+			query = String.format("select count(*) from matches where tournament_id = %d and round = %d;",tournamentId,round - 1);
+			rs = st.executeQuery(query);
+			rs.next();
+			if (rs.getInt(1) == 0)
+				return new ResponseEntity<>("Previous round is not yet generated (CODE 409)",HttpStatus.CONFLICT);
+
+			query = String.format("select count(*) from matches where tournament_id = %d and round = %d;",tournamentId,round);
+			rs = st.executeQuery(query);
+			rs.next();
+			if (rs.getInt(1) > 0)
+				return new ResponseEntity<>("In this round pairing is already generated (CODE 409)",HttpStatus.CONFLICT);
+
+			query = String.format("select user_id, start_fide, bye from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
+			rs = st.executeQuery(query);
 			while(rs.next()){
 				list.add(new Player(rs.getInt(1),rs.getInt(2),rs.getInt(3)));
 			}
@@ -206,20 +234,22 @@ public class ChessTournamentApplication {
 				leastFide.played = true;
 				query = String.format("update tournament_roles set bye = %d where user_id = %d and tournament_id = %d and role = 'player';", round, leastFide.userId, tournamentId);
 				st.execute(query);
-
 			}
-			int temp;
+			int temp,table = 1;
 			for (int i=list.size()-1;i>=0;i--){
-				for (int j=i-1;j>=0;j--){
-					temp = list.get(i).canPlayWith(list.get(j));
-					if (temp != -1) {
-						list.get(i).played = true;
-						list.get(j).played = true;
-						query = String.format("insert into matches(match_id, tournament_id, round, white_player_id, " +
-								"black_player_id) values((select 1 + max(match_id) from matches),%d,%d,%d,%d);",
-								tournamentId,round,(temp == 1 ? list.get(i).userId:list.get(j).userId),(temp == 0 ? list.get(i).userId:list.get(j).userId));
-						st.execute(query);
-						break;
+				if(!list.get(i).played)
+				{
+					for (int j=i-1;j>=0;j--){
+						temp = list.get(i).canPlayWith(list.get(j));
+						if (temp != -1) {
+							list.get(i).played = true;
+							list.get(j).played = true;
+							query = String.format("insert into matches(match_id, tournament_id, round, white_player_id, " +
+								"black_player_id,\"table\") values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d);",
+								tournamentId,round,(temp == 1 ? list.get(i).userId:list.get(j).userId),(temp == 0 ? list.get(i).userId:list.get(j).userId),table);
+							st.execute(query);
+							break;
+						}
 					}
 				}
 				if (!list.get(i).played){
@@ -229,21 +259,22 @@ public class ChessTournamentApplication {
 							list.get(i).played = true;
 							list.get(j).played = true;
 							query = String.format("insert into matches(match_id, tournament_id, round, white_player_id, " +
-											"black_player_id) values((select 1 + max(match_id) from matches),%d,%d,%d,%d);",
-									tournamentId,round,(temp == 1 ? list.get(i).userId:list.get(j).userId),(temp == 0 ? list.get(i).userId:list.get(j).userId));
+											"black_player_id,\"table\") values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d);",
+									tournamentId,round,(temp == 1 ? list.get(i).userId:list.get(j).userId),(temp == 0 ? list.get(i).userId:list.get(j).userId),table);
 							st.execute(query);
 							break;
 						}
 					}
 				}
+				table++;
 				if (!list.get(i).played)
-					return new ResponseEntity<>("Nie udalo sie kogos w zaden sposob spairowac xd",HttpStatus.I_AM_A_TEAPOT);
+					return new ResponseEntity<>("Algorithm didn't managed to pair fairly (CODE 500)",HttpStatus.INTERNAL_SERVER_ERROR);
 			}
 		}
 		catch(Exception e){
-			return new ResponseEntity<>("powodzenia w szukaniu bledu",HttpStatus.I_AM_A_TEAPOT);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-		return new ResponseEntity<>("powinno byc g",HttpStatus.I_AM_A_TEAPOT);
+		return new ResponseEntity<>("Successfully paired players (CODE 200)",HttpStatus.OK);
 	}
 
 
@@ -345,9 +376,8 @@ public class ChessTournamentApplication {
 		return new ResponseEntity<>(result.toString(),HttpStatus.OK);
 	}
 
-	@PostMapping("/api/user/login") // @PostMapping
+	@RequestMapping("/api/user/login") // @PostMapping
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
-										//@RequestBody (value = )
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
 										HttpServletResponse response) {
@@ -370,7 +400,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@RequestMapping("/api/user/logout") //@DeleteMapping
+	@RequestMapping("/api/user/logout") //@PostMapping
 	public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "xd") String auth) {
 		try {
 			if (checkFalseCookie(auth)) {
@@ -874,6 +904,7 @@ public class ChessTournamentApplication {
 		}
 	}
 
+
 	@RequestMapping("/api/tournament/round/updatematch") // @PutMapping
 	public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
 										   @RequestParam(value = "matchId") int matchId,
@@ -948,6 +979,14 @@ public class ChessTournamentApplication {
 		}
 	}
 
+
+	/**
+	 *
+	 * @param auth
+	 * @param matchId
+	 * @return
+	 */
+
 	@RequestMapping("/api/tournament/round/removematch") // @DeleteMapping
 	public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
 										   @RequestParam(value = "matchId") int matchId
@@ -970,7 +1009,7 @@ public class ChessTournamentApplication {
 				if (rs.next() && rs.getString(1).equals("admin")) {
 					query = String.format("delete from fide_changes where match_id = %d; delete from matches where match_id = %d;", matchId, matchId);
 					st.execute(query);
-					return new ResponseEntity<>("Match sucessfully deleted (CODE 200)", HttpStatus.OK);
+					return new ResponseEntity<>("Match successfully deleted (CODE 200)", HttpStatus.OK);
 				}
 				return new ResponseEntity<>("No permissions to remove match (CODE 409)", HttpStatus.CONFLICT);
 			}
@@ -1010,6 +1049,18 @@ public class ChessTournamentApplication {
 						case 2:
 							return new ResponseEntity<>("This tournament has finished (CODE 409)", HttpStatus.CONFLICT);
 					}
+					query = String.format("select count(*) from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
+					rs = st.executeQuery(query);
+					rs.next();
+					int playercount = rs.getInt(1);
+					if (playercount <= 1)
+						return new ResponseEntity<>("Not enough players to start tournament",HttpStatus.CONFLICT);
+
+					query = String.format("select rounds from tournaments where tournament_id = %d;",tournamentId);
+					rs = st.executeQuery(query);
+					if(!rs.next() || (playercount % 2 == 1 && rs.getInt(1) > playercount))
+						return new ResponseEntity<>("Number of players is odd and is smaller than number of rounds (CODE 409)",HttpStatus.CONFLICT);
+
 					query = String.format("""
 							UPDATE tournament_roles
 							SET start_fide = (SELECT fide from users u2 where u2.user_id = tournament_roles.user_id),
