@@ -33,6 +33,7 @@ import org.apache.commons.validator.GenericValidator;
 @SpringBootApplication
 @RestController
 @EnableScheduling
+@CrossOrigin("*")
 public class ChessTournamentApplication {
 	static Connection connection = null;
 	static String temp;
@@ -140,6 +141,10 @@ public class ChessTournamentApplication {
 		ArrayList<Player> list = new ArrayList<Player>();
 		try{
 			Statement st = connection.createStatement();
+			/*String query = String.format();
+			ResultSet rs = st.executeQuery(query);*/
+
+
 			String query = String.format("select user_id, start_fide, bye from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
 			ResultSet rs = st.executeQuery(query);
 			while(rs.next()){
@@ -273,7 +278,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 
 		try {
@@ -304,7 +309,7 @@ public class ChessTournamentApplication {
 			try {
 				checkCookie(auth);
 			} catch (Exception e) {
-				return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+				return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 			}
 			Statement st = connection.createStatement();
 			String query = String.format("select username,first_name,last_name,sex,date_of_birth,fide from users where user_id = '%d';", userId);
@@ -332,7 +337,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		JSONObject result = new JSONObject();
 		result.put("valid",true);
@@ -340,8 +345,9 @@ public class ChessTournamentApplication {
 		return new ResponseEntity<>(result.toString(),HttpStatus.OK);
 	}
 
-	@RequestMapping("/api/user/login") // @PostMapping
+	@PostMapping("/api/user/login") // @PostMapping
 	public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
+										//@RequestBody (value = )
 										@RequestParam(value = "username") String username,
 										@RequestParam(value = "password") String password,
 										HttpServletResponse response) {
@@ -465,7 +471,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 
 		if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",startDate))
@@ -522,7 +528,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		try {
 			Statement st = connection.createStatement();
@@ -579,21 +585,13 @@ public class ChessTournamentApplication {
 				result.put("players", array);
 				return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 			}
-			JSONArray rankingC = new JSONArray();
-			query = String.format("SELECT u.user_id, first_name, last_name, username, sum(fc.value) as fide_change, coalesce(start_fide, u.fide) as start_fide, (select sum(case when white_player_id = u.user_id then (CASE WHEN score = 1 THEN 1 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 0 ELSE 0 END) else (CASE WHEN score = 1 THEN 0 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 1 ELSE 0 END) end) as score from matches m where tournament_id = 1 and (white_player_id = u.user_id or black_player_id =u.user_id)) as score from fide_changes fc join matches m using(match_id) join users u using(user_id) join tournament_roles tr on tr.tournament_id = m.tournament_id and u.user_id = tr.user_id where m.tournament_id = %d group by u.user_id, first_name, last_name, username, start_fide;",tournamentId);
-			rs = st.executeQuery(query);
-			rsmd = rs.getMetaData();
-			while (rs.next()) {
-				JSONObject row = new JSONObject();
-				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-					row.put(rsmd.getColumnLabel(i), rs.getString(i));
-				}
-				rankingC.put(row);
-			}
-			result.put("player_data", rankingC);
+			JSONArray playerData = results(tournamentId);
+			if (playerData.isEmpty())
+				return new ResponseEntity<>("No users in this tournament (CODE 409)",HttpStatus.CONFLICT);
+			result.put("player_data", playerData);
 			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
 		}catch (Exception e){
-			return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -723,11 +721,9 @@ public class ChessTournamentApplication {
 		}
 	}
 
-	@GetMapping("/api/tournament/results/{tournamentId}")
-	public ResponseEntity<String> results(@PathVariable(value = "tournamentId") int tournamentId) {
-		try{
-			Statement st = connection.createStatement();
-			String query = String.format("""
+	public JSONArray results(@PathVariable(value = "tournamentId") int tournamentId) throws SQLException {
+		Statement st = connection.createStatement();
+		String query = String.format("""
 					select player_id,first_name,last_name, tr.start_fide, coalesce(change_in_rank,0) as change_in_fide, sum(score1) +\s
 					(SELECT CASE WHEN BYE = 0 THEN 0 ELSE 1
 					END FROM tournament_roles where user_id = player_id) as score
@@ -755,22 +751,17 @@ public class ChessTournamentApplication {
 					on f.user_id = player_id
 					group by player_id, first_name,last_name,start_fide,change_in_rank;
 					""",tournamentId,tournamentId,tournamentId,tournamentId);
-			ResultSet rs = st.executeQuery(query);
-			ResultSetMetaData rsmd = rs.getMetaData();
-			JSONArray result = new JSONArray();
-			while (rs.next()) {
-				JSONObject row = new JSONObject();
-				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-					row.put(rsmd.getColumnLabel(i), rs.getString(i));
-				}
-				result.put(row);
+		ResultSet rs = st.executeQuery(query);
+		ResultSetMetaData rsmd = rs.getMetaData();
+		JSONArray result = new JSONArray();
+		while (rs.next()) {
+			JSONObject row = new JSONObject();
+			for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+				row.put(rsmd.getColumnLabel(i), rs.getString(i));
 			}
-			if (result.isEmpty())
-				return new ResponseEntity<>("Data base error (probably no relevant results found) (CODE 409)", HttpStatus.CONFLICT);
-			return new ResponseEntity<>(result.toString(),HttpStatus.OK);
-		}catch(Exception e){
-			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+			result.put(row);
 		}
+		return result;
 	}
 
 	@RequestMapping("/api/tournament/round/addmatch") // @PutMapping
@@ -791,7 +782,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<String>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		try {
 			Statement st = connection.createStatement();
@@ -892,7 +883,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<String>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<String>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		try {
 			Statement st = connection.createStatement();
@@ -926,7 +917,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		try{
 			Statement st = connection.createStatement();
@@ -934,7 +925,7 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next()){
 				if (!rs.getString(1).equals("admin")){
-					return new ResponseEntity<>("User is not an admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+					return new ResponseEntity<>("User is not an admin of this tournament (CODE 401)",HttpStatus.UNAUTHORIZED);
 				}else{
 					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
 					rs = st.executeQuery(query);
@@ -975,7 +966,7 @@ public class ChessTournamentApplication {
 			userId = checkCookie(auth);
 		}
 		catch (Exception e) {
-			return new ResponseEntity<>("No or expired authorization token (CODE 402)", HttpStatus.UNAUTHORIZED);
+			return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
 		}
 		try{
 			Statement st = connection.createStatement();
@@ -983,7 +974,7 @@ public class ChessTournamentApplication {
 			ResultSet rs = st.executeQuery(query);
 			if (rs.next()){
 				if (!rs.getString(1).equals("admin")){
-					return new ResponseEntity<>("User is not an admin of this tournament (CODE 402)",HttpStatus.UNAUTHORIZED);
+					return new ResponseEntity<>("User is not an admin of this tournament (CODE 401)",HttpStatus.UNAUTHORIZED);
 				}else{
 					query = String.format("select tournament_state from tournaments where tournament_id = %d;",tournamentId,userId);
 					rs = st.executeQuery(query);
