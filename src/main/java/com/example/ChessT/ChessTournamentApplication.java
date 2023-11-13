@@ -904,12 +904,89 @@ public class ChessTournamentApplication {
 		}
 	}
 
+
+	@RequestMapping("/api/tournament/round/updatematch") // @PutMapping
+	public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
+										   @RequestParam(value = "matchId") int matchId,
+										   @RequestParam(value = "score", defaultValue = "2") int score,
+										   @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
+	){
+		if(score <-1 || score >2){
+			return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
+		}
+		if(score == 2 && gameNotation.isEmpty())
+			return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
+		int userId = -1;
+		try{
+			userId = checkCookie(auth);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<String>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
+		}
+		try {
+			Statement st = connection.createStatement();
+			String query = String.format("select role from tournament_roles join matches using(tournament_id) where match_id = %d and user_id = %d;",matchId,userId);
+			ResultSet rs = st.executeQuery(query);
+			if (rs.next() && rs.getString(1).equals("admin")){
+				matchId = rs.getInt(1);
+				int mode = 0;
+				if(score == 2) mode+=1;
+				if(gameNotation.isEmpty()) mode+=2;
+
+				query = switch (mode) {
+					case 1 ->
+							String.format("update matches set game_notation = '%s' where match_id = %d;", gameNotation, matchId);
+					case 2 ->
+							String.format("update matches set score = %d where match_id = %d;", score, matchId);
+					default ->
+							String.format("update matches set score = %d, game_notation = '%s' where match_id = %d;", score, gameNotation, matchId);
+				};
+				st.execute(query);
+				if(score != 2){
+					query = String.format("select count(*) from fide_changes where match_id = %d;", matchId);
+					rs = st.executeQuery(query);
+					rs.next();
+					String query2 = String.format("""
+							SELECT m.white_player_id, tr.start_fide, tr.k from matches m
+							join tournament_roles tr on m.white_player_id = tr.user_id and m.tournament_id = tr.tournament_id
+							where match_id = %d
+							union
+							SELECT m.black_player_id, tr.start_fide, tr.k from matches m
+							join tournament_roles tr on m.black_player_id = tr.user_id and m.tournament_id = tr.tournament_id
+							where match_id = %d;""", matchId, matchId);
+					Statement st2 = connection.createStatement();
+					ResultSet rs2 = st2.executeQuery(query2);
+					rs2.next();
+					int wR = rs2.getInt(2), wK = rs2.getInt(3), wId = rs2.getInt(1);
+					rs2.next();
+					int bR = rs2.getInt(2), bK = rs2.getInt(3), bId = rs2.getInt(1);
+					int wF = fideChange(wR, bR, wK, (score+1.f)/2.f);
+					int bF = fideChange(bR, wR, bK, (-score+1.f)/2.f);
+					if(rs.getInt(1)==0){
+						query = String.format("Insert into fide_changes values (%d, %d, %d), (%d, %d, %d);", matchId, wId, wF, matchId, bId, bF);
+					}
+					else{
+						query = String.format("update fide_changes set value = %d where match_id = %d and user_id = %d; update fide_changes set value = %d where match_id = %d and user_id = %d;", wF, matchId, wId, bF, matchId, bId);
+					}
+					st.execute(query);
+					return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
+				}
+			}
+			return new ResponseEntity<>("No such tournament or no permissions to add match (CODE 409)",HttpStatus.CONFLICT);
+		}
+		catch (Exception e) {
+			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+
 	/**
 	 *
 	 * @param auth
 	 * @param matchId
 	 * @return
 	 */
+
 	@RequestMapping("/api/tournament/round/removematch") // @DeleteMapping
 	public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
 										   @RequestParam(value = "matchId") int matchId
@@ -1050,10 +1127,29 @@ public class ChessTournamentApplication {
 	}
 
 	@GetMapping("/api/homepage")
-	public ResponseEntity<String> homepage(){
+	public ResponseEntity<String> homepage(@RequestParam(value = "mode", defaultValue = "-1") int mode,
+										   @RequestParam(value = "page", defaultValue = "1") int page,
+										   @RequestParam(value = "pageSize", defaultValue = "100") int page_size){
 		try {
 			Statement st = connection.createStatement();
-			String query = "select tournament_id, name,location,time_control,start_date from tournaments where start_date>now() and start_date<now() + interval '3' month limit 100;";
+			String query, query2 = "";
+			if(mode > 2 || mode < -1)
+				return new ResponseEntity<>("Invalid mode (CODE 409)", HttpStatus.CONFLICT);
+			if(page_size < 1 || page < 1)
+				return new ResponseEntity<>("Invalid page params (CODE 409)", HttpStatus.CONFLICT);
+			if(mode < 0){
+				query = "select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where (tournament_state = 2 and end_date > now() - interval '7' day) or tournament_state = 1 or (tournament_state = 0 and start_date < now() + interval '2' month and start_date > now() - interval '7' day);";
+
+			}
+			else if(mode == 0){
+				query = String.format("select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where tournament_state = %d order by start_date asc limit %d offset %d;", mode, page_size, (page - 1) * page_size);
+				query2 = String.format("select count(*) from tournaments where tournament_state = %d;", mode);
+			}
+			else{
+				query = String.format("select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where tournament_state = %d order by end_date desc limit %d offset %d;", mode, page_size, (page - 1) * page_size);
+				query2 = String.format("select count(*) from tournaments where tournament_state = %d;", mode);
+			}
+
 			ResultSet rs = st.executeQuery(query);
 			ResultSetMetaData rsmd = rs.getMetaData();
 			JSONArray result = new JSONArray();
@@ -1066,8 +1162,20 @@ public class ChessTournamentApplication {
 			}
 			if (result.isEmpty())
 				return new ResponseEntity<>("Data base error (probably no relevant tournaments found) (CODE 409)", HttpStatus.CONFLICT);
-			return new ResponseEntity<>(result.toString(), HttpStatus.OK);
-
+			int pages = 0;
+			if(mode != -1){
+				rs = st.executeQuery(query2);
+				rs.next();
+				pages = rs.getInt(1);
+			}
+			if(pages % page_size == 0)
+				pages/=page_size;
+			else
+				pages = pages/page_size + 1;
+			JSONObject nRes = new JSONObject();
+			nRes.put("pages", pages);
+			nRes.put("tournaments", result);
+			return new ResponseEntity<>(nRes.toString(), HttpStatus.OK);
 		}catch (Exception e){
 			return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
