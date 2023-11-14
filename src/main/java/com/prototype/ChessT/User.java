@@ -6,8 +6,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
@@ -27,13 +25,21 @@ import java.util.regex.Pattern;
 @RestController
 @CrossOrigin("*")
 public class User {
+    /**
+     * Rather ugly, but working regex to validate, provided by users email addresses
+     */
     static String regexMailValidationPattern = "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:"
             + "(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|"
             + "\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.)"
             + "{3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])";
 
+    /**
+     * Finds all data about currently logged-in user (except hashed password) for logged-in user
+     * @param auth Cookie used to authenticate logged-in users
+     * @return JSON Object wth username, mail, first_name, last_name, sex, date_of_birth and fide
+     */
     @GetMapping("/api/user")
-    public ResponseEntity<String> user(@CookieValue(value = "auth", defaultValue = "xd") String auth){
+    public ResponseEntity<String> user(@CookieValue(value = "auth", defaultValue = "") String auth){
         int userId = -1;
         try{
             userId = checkCookie(auth);
@@ -63,6 +69,12 @@ public class User {
         }
     }
 
+    /**
+     * Finds all data about any user (except email and hashed password) for logged-in users only
+     * @param auth Cookie used to authenticate logged-in users
+     * @param userId Id of a user the data is about
+     * @return JSON Object wth username, first_name, last_name, sex, date_of_birth and fide
+     */
     @GetMapping("/api/user/account/{userId}")
     public ResponseEntity<String> account(@CookieValue(value = "auth", defaultValue = "xd") String auth,
                                           @PathVariable int userId) {
@@ -91,6 +103,11 @@ public class User {
 
     }
 
+    /**
+     * Validates authentication cookie
+     * @param auth Cookie used to authenticate logged-in users
+     * @return JSON Object with values: valid (boolean), user_id (of logged_in user)
+     */
     @GetMapping("/api/validate-session")
     public ResponseEntity<String> validate(@CookieValue(value = "auth", defaultValue = "xd") String auth){
         int userId = -1;
@@ -106,6 +123,15 @@ public class User {
         return new ResponseEntity<>(result.toString(),HttpStatus.OK);
     }
 
+    /**
+     * Takes username and password, and if correct creates authentication cookie for user
+     * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-in)
+     * @param username username of user to log in
+     * @param password password of user to log in
+     * @param response used to attach cookie to header of response
+     * @return CODE 200 if successfully logged in
+     * @see User#addAuthCookie
+     */
     @RequestMapping("/api/user/login") // @PostMapping
     public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
                                         @RequestParam(value = "username") String username,
@@ -130,6 +156,11 @@ public class User {
         }
     }
 
+    /**
+     * Log out currently loged-in user
+     * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-out)
+     * @return CODE 200 if successfully logged out
+     */
     @RequestMapping("/api/user/logout") //@PostMapping
     public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "xd") String auth) {
         try {
@@ -146,8 +177,22 @@ public class User {
         }
     }
 
-
-
+    /**
+     * Validates data to register user, and if everything is valid registers user in database
+     * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-in)
+     * @param username username of new user
+     * @param password password of new user (t will be hashed, then saved to database)
+     * @param password2 password for typos elimination
+     * @param mail mail of new user
+     * @param name first name of new user
+     * @param lastname last name of new user
+     * @param sex sex of new user
+     * @param date birth date of new user
+     * @param fide declared by new user, his fide
+     * @param response used to attach cookie to header of response
+     * @return CODE 200 if successfully logged in
+     * @see User#addAuthCookie
+     */
     @RequestMapping("/api/user/register") //@PostMapping
     public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
                                            @RequestParam(value = "username") String username,
@@ -216,6 +261,9 @@ public class User {
         }
     }
 
+    /**
+     * Generates strings with length of 32 for use as authentication token
+     */
     public String randomString32Char() {
         int leftLimit = 48; // numeral '0'
         int rightLimit = 122; // letter 'z'
@@ -229,6 +277,14 @@ public class User {
                 .toString();
     }
 
+    /**
+     * Creates and attaches authentication cookie to header of login or register function
+     * @param r response the cookie will be attached to
+     * @param userId id of user for whose session the token will be
+     * @throws SQLException if no such user
+     * @see User#login(String, String, String, HttpServletResponse)
+     * @see User#register(String, String, String, String, String, String, String, String, String, int, HttpServletResponse)
+     */
     public void addAuthCookie(HttpServletResponse r, int userId) throws SQLException {
         Statement st = ChessTournamentApplication.connection.createStatement();
         String query = String.format("delete from sessions where user_id = %d and date < now() - interval '30' minute;",userId);
@@ -251,6 +307,12 @@ public class User {
         r.addCookie(c);
     }
 
+    /**
+     * Used widely to verify user session authentication cookie
+     * @param auth cookie to validate
+     * @return userId of owner of session authentication
+     * @throws Exception if auth is older than 30 mins or doesn't exist at all
+     */
     public static int checkCookie(String auth) throws Exception {
         Statement st = ChessTournamentApplication.connection.createStatement();
         String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
@@ -264,6 +326,14 @@ public class User {
         throw new Exception("No such active auth token found");
     }
 
+    /**
+     * Check if no authentication token was attached to header (checks if no one is logged-in)
+     * @param auth Cookie to check if valid
+     * @return true if no user session authentication valid
+     * @throws SQLException if something goes horribly wrong
+     * @see User#login(String, String, String, HttpServletResponse)
+     * @see User#register(String, String, String, String, String, String, String, String, String, int, HttpServletResponse)
+     */
     public static boolean checkFalseCookie(String auth) throws SQLException {
         if(auth.length()<30){
             return true;
@@ -274,12 +344,24 @@ public class User {
         return !rs.next();
     }
 
+    /**
+     * Hashes passwor for safety reasons
+     * @param password password to hash
+     * @param username used as "salt" during hashing
+     * @return hashed password
+     * @throws NoSuchAlgorithmException if invalid algorithm for hashing provided by developer
+     */
     public String hashPassword(String password, String username) throws NoSuchAlgorithmException {
         final MessageDigest digest = MessageDigest.getInstance("SHA3-256");
         final byte[] hashBytes = digest.digest((password + username).getBytes(StandardCharsets.UTF_8));
         return bytesToHex(hashBytes);
     }
 
+    /**
+     * Converts bytes to hexadecimal
+     * @param hash bytes to convert
+     * @return string, hexadecimal representation of bytes
+     */
     private static String bytesToHex(byte[] hash) {
         StringBuilder hexString = new StringBuilder(2 * hash.length);
         for (int i = 0; i < hash.length; i++) {
@@ -291,6 +373,15 @@ public class User {
         }
         return hexString.toString();
     }
+
+    /**
+     * used for regex validation inside user register and tournament create
+     * @param regexPattern pattern of regEx
+     * @param textToValidate text to validate
+     * @return true if valid, false otherwise
+     * @see User#register(String, String, String, String, String, String, String, String, String, int, HttpServletResponse)
+     * @see Tournament#create(String, String, String, String, String, String, String, int, String)
+     */
     public static boolean validate(String regexPattern, String textToValidate){
         return Pattern.compile(regexPattern)
                 .matcher(textToValidate)

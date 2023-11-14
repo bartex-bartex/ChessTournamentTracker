@@ -1,8 +1,5 @@
 package com.prototype.ChessT;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.validator.GenericValidator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.boot.SpringApplication;
@@ -11,26 +8,31 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.*;
-import java.time.LocalDate;
-import java.time.Period;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.regex.Pattern;
 
 @SpringBootApplication
 @RestController
 @EnableScheduling
 @CrossOrigin("*")
 public class ChessTournamentApplication {
+	/**
+	 * Connection with database, used to create statements
+	 */
 	public static Connection connection = null;
-	static String temp;
+
+	/**
+	 * Main function called at the start up of a server
+	 * Runs spring application, establishes connection with database and clears all session tokens
+	 * @param args
+	 */
 	public static void main(String[] args) {
+		String temp;
+
 		SpringApplication.run(ChessTournamentApplication.class, args);
 		try {
 			Class.forName("org.postgresql.Driver");
@@ -52,7 +54,11 @@ public class ChessTournamentApplication {
 	}
 
 
-
+	/**
+	 * Function called every month, on 0:10 of first day of that month
+	 * Sums all fide changes cause by playing in tournaments that have ended during previous month
+	 * (the one that ended 10 min earlier), then updates K values for all players
+	 */
 	@Scheduled(cron = "0 10 0 * * ?")
 	public void fideUpdate(){
 		try{
@@ -76,6 +82,19 @@ public class ChessTournamentApplication {
 			return;
 		}
 	}
+
+	/**
+	 * Finds tournaments in data base, that match search params and puts result into JSON Array,
+	 * which is combined with max page number into JSON Object
+	 * @param mode defaults to -1, describes the state of tournaments user is looking for
+ 	 *            (0 means tournaments waiting to start, 1 tournaments started but not ended, 2 tournaments ended,
+	 *             -1 find tournaments that ended during last week, all tournaments that are ongoing
+	 *             and those that are going to begin during next two months)
+	 * @param page number of page to show (relevant if mode different from -1)
+	 * @param page_size number of page to show (relevant if mode different from -1)
+	 * @return JSON Object containing number of possible to see pages (that are not empty, also 0 if mode equals -1)
+	 * and array named "tournaments" of results
+	 */
 
 	@GetMapping("/api/homepage")
 	public ResponseEntity<String> homepage(@RequestParam(value = "mode", defaultValue = "-1") int mode,
@@ -132,6 +151,12 @@ public class ChessTournamentApplication {
 		}
 	}
 
+	/**
+	 * Computes K value used during calculation of fide change after each match
+	 * @param fide fide of user we want to calculate K for
+	 * @param adult flag if user is adult, used in computing K
+	 * @return K value
+	 */
 	public static int kValue(int fide, boolean adult){
 		if(fide > 2400)
 			return 10;
