@@ -36,7 +36,7 @@ public class User {
     /**
      * Finds all data about currently logged-in user (except hashed password) for logged-in user
      * @param auth Cookie used to authenticate logged-in users
-     * @return JSON Object wth username, mail, first_name, last_name, sex, date_of_birth and fide
+     * @return JSON structured string with username, mail, first_name, last_name, sex, date_of_birth and fide
      */
     @GetMapping("/api/user")
     public ResponseEntity<String> user(@CookieValue(value = "auth", defaultValue = "") String auth){
@@ -73,7 +73,7 @@ public class User {
      * Finds all data about any user (except email and hashed password) for logged-in users only
      * @param auth Cookie used to authenticate logged-in users
      * @param userId Id of a user the data is about
-     * @return JSON Object wth username, first_name, last_name, sex, date_of_birth and fide
+     * @return JSON structured string  with username, first_name, last_name, sex, date_of_birth and fide
      */
     @GetMapping("/api/user/account/{userId}")
     public ResponseEntity<String> account(@CookieValue(value = "auth", defaultValue = "xd") String auth,
@@ -106,7 +106,7 @@ public class User {
     /**
      * Validates authentication cookie
      * @param auth Cookie used to authenticate logged-in users
-     * @return JSON Object with values: valid (boolean), user_id (of logged_in user)
+     * @return JSON structured string  with values: valid (boolean), user_id (of logged_in user)
      */
     @GetMapping("/api/validate-session")
     public ResponseEntity<String> validate(@CookieValue(value = "auth", defaultValue = "xd") String auth){

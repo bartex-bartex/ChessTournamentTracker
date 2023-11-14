@@ -439,7 +439,7 @@ public class Tournament {
     /**
      * Returns general info of the tournament
      * @param tournamentId unique tournament id
-     * @return JSONObject with general info about tournament and result of players if tournament already started
+     * @return JSON structured string  with general info about tournament and result of players if tournament already started
      * or is finished or general info about players that joined the tournament
      */
     @GetMapping("/api/tournament/{tournamentId}")
@@ -487,7 +487,7 @@ public class Tournament {
     /**
      * Returns general info about match
      * @param matchId
-     * @return JSONObject containing match_id, white_player_id, black_player_id, score (1 - white player win, 0 - tie,
+     * @return JSON structured string containing match_id, white_player_id, black_player_id, score (1 - white player win, 0 - tie,
      * -1 - black player win other values = nodata), table, game_notation.
      */
     @GetMapping("/api/tournament/match/{matchId}")
@@ -516,7 +516,7 @@ public class Tournament {
      * Returns general info about round of tournament
      * @param tournamentId unique tournament id
      * @param round round number
-     * @return JSON Object containing list of matches, single match contains match_id, white_player_id, black_player_id,
+     * @return JSON structured string containing list of matches, single match contains match_id, white_player_id, black_player_id,
      * score, round, table, game_notation, white_first_name, white_last_name, black_first_name, black_last_name,
      * white_fide, black_fide
      */
@@ -549,7 +549,7 @@ public class Tournament {
      * Retrieves details of a player in a tournament based on the provided tournament ID and user ID.
      * @param tournamentId unique tournament id
      * @param userId unique user id
-     * @return JSON Object containing user_id, username, first_name, last_name, start_fide, tournament_id, rank_change,
+     * @return JSON structured string containing user_id, username, first_name, last_name, start_fide, tournament_id, rank_change,
      * opponents (list of opponents containing tournament_id, match_id, user_id, first_name, last_name, score, color,
      * round, start_fide, table), bye (0 - no bye given, other positive integer round which bye was given), sum (score in whole tournament),
      * avg_fide (average FIDE rating of opponents)

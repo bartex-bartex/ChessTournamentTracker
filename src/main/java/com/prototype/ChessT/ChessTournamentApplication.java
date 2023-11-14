@@ -92,7 +92,7 @@ public class ChessTournamentApplication {
 	 *             and those that are going to begin during next two months)
 	 * @param page number of page to show (relevant if mode different from -1)
 	 * @param page_size number of page to show (relevant if mode different from -1)
-	 * @return JSON Object containing number of possible to see pages (that are not empty, also 0 if mode equals -1)
+	 * @return JSON structured string containing number of possible to see pages (that are not empty, also 0 if mode equals -1)
 	 * and array named "tournaments" of results
 	 */
 
