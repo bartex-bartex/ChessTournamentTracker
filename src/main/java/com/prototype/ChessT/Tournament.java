@@ -19,11 +19,28 @@ import java.util.Set;
 @RestController
 @CrossOrigin("*")
 public class Tournament {
-    class Player{
+
+    /**
+     * Class Player that contains info about user tournament data
+     */
+    static class Player{
+        /**
+         * Constructor for class Player
+         * @param userId user unique id
+         * @param rank user FIDE rank
+         */
         Player(int userId, int rank){
             this.userId = userId;
             this.rank = rank;
         }
+
+        /**
+         * Constructor for class Player
+         * @param userId user unique id
+         * @param rank user FIDE rank
+         * @param bye info of user bye
+         * @see Player#bye
+         */
         Player(int userId, int rank, int bye){
             this.userId = userId;
             this.rank = rank;
@@ -31,15 +48,59 @@ public class Tournament {
             if (bye != 0)
                 score += 1;
         }
+        /**
+         * Bool that indicates if player is already paired with other player.
+         * true - he is paired
+         * false - he isn't paired
+         */
         public boolean played = false;
+        /**
+         * Information that indicates if player had bye this tournament
+         * If bye is equal to 0 then he hasn't received bye
+         * If bye is positive it shows round number during he received bye
+         */
         public int bye = 0;
+        /**
+         * User id of current player
+         */
         public int userId;
+        /**
+         * FIDE rank of current player
+         */
         public int rank;
+        /**
+         * Current player score
+         */
         public float score = 0;
+        /**
+         * Number of times current player played as white
+         */
         public int playedAsWhite = 0;
+        /**
+         * Number of times current player played as black
+         */
         public int playedAsBlack = 0;
+        /**
+         * Set that contains player ids that current player already played with
+         */
         public Set<Integer> alreadyPlayed = new HashSet<>();
+        /**
+         * Informs of ratio current player played with different colors of chess pieces
+         * If integer is positive he played that many more times as white
+         * Else if integer is equal 0 it means he played equal times both colors
+         * else if integer is negative it means he player more times as black
+         */
         public int playRatio;
+        /**
+         * More restrictive version of Player.canPlayWithLessRestrictive(Player player)
+         * Returns an int that informs us about if two players can play with each other.
+         * 1 - current player plays as white
+         * 0 - current player plays as black
+         * -1 - two players cannot play with each other
+         * @param player player, we want to pair current player object with
+         * @return int
+         * @see Player#canPlayWithLessRestrictive(Player)
+         */
         public int canPlayWith(Player player) { // 1 - can play as white, 0 - can play as black, -1 - cannot play
             if (played || player.played || alreadyPlayed.contains(player.userId) || (playRatio >= 2 && player.playRatio >= 2) || (playRatio <= -2 && player.playRatio <= -2))
                 return -1;
@@ -50,7 +111,17 @@ public class Tournament {
             return 1;
         }
 
-        public int canPlayWithLessRestricted(Player player) { // 1 - can play as white, 0 - can play as black, -1 - cannot play
+        /**
+         * Less restrictive version of Player.canPlayWith(Player player)
+         * Returns an int that informs us about if two players can play with each other.
+         * 1 - current player plays as white
+         * 0 - current player plays as black
+         * -1 - two players cannot play with each other
+         * @param player player, we want to pair current player object with
+         * @return int
+         * @see Player#canPlayWith(Player)
+         */
+        public int canPlayWithLessRestrictive(Player player) { // 1 - can play as white, 0 - can play as black, -1 - cannot play
             if (played || player.played) //|| alreadyPlayed.contains(player.userId))
                 return -1;
             if (playRatio > player.playRatio)
@@ -60,6 +131,12 @@ public class Tournament {
             return 1;
         }
     }
+
+    /**
+     * Generates round pairings for first round of the tournament
+     * @param tournamentId unique tournament id
+     * @return boolean true if generated properly false if something is wrong
+     */
     public boolean firstRoundPairings(int tournamentId){
         ArrayList<Player> list = new ArrayList<Player>();
         try{
@@ -67,7 +144,7 @@ public class Tournament {
             String query = String.format("select user_id, start_fide from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
             ResultSet rs = st.executeQuery(query);
             while(rs.next()){
-                list.add(new Player(rs.getInt(1),rs.getInt(2)));
+                list.add(new Player(rs.getInt(1), rs.getInt(2)));
             }
             if (list.isEmpty())
                 return false;
@@ -89,7 +166,15 @@ public class Tournament {
             return false;
         }
     }
-    @RequestMapping("/api/tournament/generateRoundPairings")
+
+    /**
+     * Generates round pairings for provided round of tournament
+     * @param tournamentId unique tournament id
+     * @param round round number
+     * @param auth authentication cookie
+     * @return CODE 200 if generated successfully
+     */
+    @RequestMapping("/api/tournament/generateRoundPairings") // PostMapping
     public ResponseEntity<String> generateRoundPairings(@RequestParam(value = "tournamentId") int tournamentId,
                                                         @RequestParam(value = "round") int round,
                                                         @CookieValue(value = "auth") String auth){
@@ -134,7 +219,7 @@ public class Tournament {
             query = String.format("select user_id, start_fide, bye from tournament_roles where role = 'player' and tournament_id = %d;",tournamentId);
             rs = st.executeQuery(query);
             while(rs.next()){
-                list.add(new Player(rs.getInt(1),rs.getInt(2),rs.getInt(3)));
+                list.add(new Player(rs.getInt(1), rs.getInt(2), rs.getInt(3)));
             }
             if (list.isEmpty())
                 return new ResponseEntity<>("Nie ma graczy",HttpStatus.I_AM_A_TEAPOT);
@@ -212,7 +297,7 @@ public class Tournament {
                 }
                 if (!list.get(i).played){
                     for (int j=i-1;j>=0;j--){
-                        temp = list.get(i).canPlayWithLessRestricted(list.get(j));
+                        temp = list.get(i).canPlayWithLessRestrictive(list.get(j));
                         if (temp != -1) {
                             list.get(i).played = true;
                             list.get(j).played = true;
@@ -235,6 +320,19 @@ public class Tournament {
         return new ResponseEntity<>("Successfully paired players (CODE 200)",HttpStatus.OK);
     }
 
+    /**
+     * Creates tournament and give admin role for current user
+     * @param auth authentication cookie
+     * @param name tournament name
+     * @param location tournament location
+     * @param organizer tournament organizer
+     * @param timeControl time control of tournament
+     * @param startDate start date of the tournament
+     * @param endDate end date of the tournament
+     * @param rounds number of rounds tournament has
+     * @param info info about tournament
+     * @return CODE 200 if tournament was successfully created
+     */
     @RequestMapping("/api/tournament/create") //@PostMapping
     public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "xd") String auth,
                                          @RequestParam(value = "tournamentName") String name,
@@ -299,6 +397,12 @@ public class Tournament {
 
     }
 
+    /**
+     * Allows current user to join provided tournament
+     * @param auth authentication cookie
+     * @param tournamentId tournament unique id
+     * @return CODE 200 if user successfully joined
+     */
     @RequestMapping("/api/tournament/join/{tournamentId}") //@PostMapping
     public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "xd") String auth,
                                        @PathVariable int tournamentId){
@@ -332,6 +436,11 @@ public class Tournament {
         }
     }
 
+    /**
+     *
+     * @param tournamentId unique tournament id
+     * @return JSONObject with general info about tournament (and result of players)
+     */
     @GetMapping("/api/tournament/{tournamentId}")
     public ResponseEntity<String> tournamentInfo(@PathVariable int tournamentId){
         try {
