@@ -334,7 +334,7 @@ public class Tournament {
      * @return CODE 200 if tournament was successfully created
      */
     @RequestMapping("/api/tournament/create") //@PostMapping
-    public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+    public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "") String auth,
                                          @RequestParam(value = "tournamentName") String name,
                                          @RequestParam(value = "location") String location,
                                          @RequestParam(value = "organizer") String organizer,
@@ -404,7 +404,7 @@ public class Tournament {
      * @return CODE 200 if user successfully joined
      */
     @RequestMapping("/api/tournament/join/{tournamentId}") //@PostMapping
-    public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+    public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "") String auth,
                                        @PathVariable int tournamentId){
         int userId = -1;
         try{
@@ -437,9 +437,10 @@ public class Tournament {
     }
 
     /**
-     *
+     * Returns general info of the tournament
      * @param tournamentId unique tournament id
-     * @return JSONObject with general info about tournament (and result of players)
+     * @return JSONObject with general info about tournament and result of players if tournament already started
+     * or is finished or general info about players that joined the tournament
      */
     @GetMapping("/api/tournament/{tournamentId}")
     public ResponseEntity<String> tournamentInfo(@PathVariable int tournamentId){
@@ -483,6 +484,12 @@ public class Tournament {
         }
     }
 
+    /**
+     * Returns general info about match
+     * @param matchId
+     * @return JSONObject containing match_id, white_player_id, black_player_id, score (1 - white player win, 0 - tie,
+     * -1 - black player win other values = nodata), table, game_notation.
+     */
     @GetMapping("/api/tournament/match/{matchId}")
     public ResponseEntity<String> getMatch(@PathVariable int matchId){
         try{
@@ -505,6 +512,14 @@ public class Tournament {
 
     }
 
+    /**
+     * Returns general info about round of tournament
+     * @param tournamentId unique tournament id
+     * @param round round number
+     * @return JSON Object containing list of matches, single match contains match_id, white_player_id, black_player_id,
+     * score, round, table, game_notation, white_first_name, white_last_name, black_first_name, black_last_name,
+     * white_fide, black_fide
+     */
     @GetMapping("/api/tournament/round")
     public ResponseEntity<String> getRound(@RequestParam (value = "tournamentId") int tournamentId,
                                            @RequestParam (value = "round") int round){
@@ -529,6 +544,16 @@ public class Tournament {
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Retrieves details of a player in a tournament based on the provided tournament ID and user ID.
+     * @param tournamentId unique tournament id
+     * @param userId unique user id
+     * @return JSON Object containing user_id, username, first_name, last_name, start_fide, tournament_id, rank_change,
+     * opponents (list of opponents containing tournament_id, match_id, user_id, first_name, last_name, score, color,
+     * round, start_fide, table), bye (0 - no bye given, other positive integer round which bye was given), sum (score in whole tournament),
+     * avg_fide (average FIDE rating of opponents)
+     */
     @GetMapping("/api/tournament/player")
     public ResponseEntity<String> playerInfo(@RequestParam(value = "tournamentId") int tournamentId,
                                              @RequestParam(value = "userId") int userId){
@@ -609,6 +634,12 @@ public class Tournament {
         }
     }
 
+    /**
+     * Returns JSONObject with results of provided tournament
+     * @param tournamentId
+     * @return JSONObject containing results
+     * @throws SQLException
+     */
     public JSONArray results(@PathVariable(value = "tournamentId") int tournamentId) throws SQLException {
         Statement st = ChessTournamentApplication.connection.createStatement();
         String query = String.format("""
@@ -652,8 +683,21 @@ public class Tournament {
         return result;
     }
 
+    /**
+     * Adds match to selected round of selected tournament. Use at your own risk
+     * @param auth authentication cookie
+     * @param tournamentId tournament unique id
+     * @param wId white player id
+     * @param bId black player id
+     * @param table table number
+     * @param round round number
+     * @param score score (1 - white player win, 0 - tie, -1 - black player win, other values = nodata)
+     * @param gameNotation game notation
+     * @return CODE 200 if add match successfully added
+     * @deprecated
+     */
     @RequestMapping("/api/tournament/round/addmatch") // @PutMapping
-    public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+    public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                            @RequestParam(value = "tournamentId") int tournamentId,
                                            @RequestParam(value = "whitePlayerId") int wId,
                                            @RequestParam(value = "blackPlayerId") int bId,
@@ -762,7 +806,14 @@ public class Tournament {
         }
     }
 
-
+    /**
+     * Updates score and game notation of provided match
+     * @param auth authorisation cookie
+     * @param matchId unique match  id
+     * @param score score (1 - white player win, 0 - tie, -1 - black player win, other values = nodata)
+     * @param gameNotation game notation
+     * @return 200 if match successfully updated
+     */
     @RequestMapping("/api/tournament/round/updatematch") // @PutMapping
     public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                               @RequestParam(value = "matchId") int matchId,
@@ -839,12 +890,12 @@ public class Tournament {
 
 
     /**
-     *
-     * @param auth
-     * @param matchId
-     * @return
+     * Adds match to selected round of selected tournament. Use at your own risk
+     * @param auth authentication cookie
+     * @param matchId unique match id
+     * @return code 200 if match successfully deleted
+     * @deprecated
      */
-
     @RequestMapping("/api/tournament/round/removematch") // @DeleteMapping
     public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                               @RequestParam(value = "matchId") int matchId
@@ -879,10 +930,15 @@ public class Tournament {
         }
     }
 
+    /**
+     * Starts the tournament if it hasn't already started
+     * @param tournamentId unique tournament id
+     * @param auth authentication cookie
+     * @return CODE 200 if successfully started
+     */
     @RequestMapping("/api/tournament/start/{tournamentId}") //@PutMapping
     public ResponseEntity<String> startTournament(@PathVariable (value="tournamentId")int tournamentId,
-                                                  @CookieValue (value="auth", defaultValue = "xd") String auth){
-        //sprawdzanie czy ilosc graczy jest wieksza rowna od ilosci rund lub czy jest parzysta ilosc graczy
+                                                  @CookieValue (value="auth", defaultValue = "") String auth){
         int userId = -1;
         try{
             userId = User.checkCookie(auth);
@@ -938,12 +994,16 @@ public class Tournament {
         }catch (Exception e){
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
     }
-
+    /**
+     * Ends the tournament if it hasn't already ended
+     * @param tournamentId unique tournament id
+     * @param auth authentication cookie
+     * @return CODE 200 if successfully started
+     */
     @RequestMapping("/api/tournament/end/{tournamentId}") //@PutMapping
     public ResponseEntity<String> endTournament(@PathVariable (value="tournamentId")int tournamentId,
-                                                @CookieValue (value="auth", defaultValue = "xd") String auth){
+                                                @CookieValue (value="auth", defaultValue = "") String auth){
         int userId = -1;
         try{
             userId = User.checkCookie(auth);
@@ -983,6 +1043,14 @@ public class Tournament {
         }
     }
 
+    /**
+     * Computes fide change based on player ratings, score of the match and K value
+     * @param R rating of player
+     * @param oR rating of opponent
+     * @param K constant K
+     * @param S score
+     * @return change of ranking
+     */
     private static int fideChange(int R, int oR, int K, float S){
         float p = (float) (1.f/(1+Math.pow(10.f, (oR-R)/400.f)));
         return (int) (K*(S - p));
