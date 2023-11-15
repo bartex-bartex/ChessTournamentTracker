@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.*;
 
+/**
+ * Runes spring application, manages database connection and implement helper method and endpoints.
+ */
 @SpringBootApplication
 @RestController
 @EnableScheduling

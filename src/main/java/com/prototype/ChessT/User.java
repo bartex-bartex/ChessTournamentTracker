@@ -21,7 +21,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Random;
 import java.util.regex.Pattern;
 
-
+/**
+ * Implements logic for endpoints connected with user.
+ */
 @RestController
 @CrossOrigin("*")
 public class User {
@@ -76,7 +78,7 @@ public class User {
      * @return JSON structured string  with username, first_name, last_name, sex, date_of_birth and fide
      */
     @GetMapping("/api/user/account/{userId}")
-    public ResponseEntity<String> account(@CookieValue(value = "auth", defaultValue = "xd") String auth,
+    public ResponseEntity<String> account(@CookieValue(value = "auth", defaultValue = "") String auth,
                                           @PathVariable int userId) {
         try {
             try {
@@ -109,7 +111,7 @@ public class User {
      * @return JSON structured string  with values: valid (boolean), user_id (of logged_in user)
      */
     @GetMapping("/api/validate-session")
-    public ResponseEntity<String> validate(@CookieValue(value = "auth", defaultValue = "xd") String auth){
+    public ResponseEntity<String> validate(@CookieValue(value = "auth", defaultValue = "") String auth){
         int userId = -1;
         try{
             userId = checkCookie(auth);
@@ -132,7 +134,7 @@ public class User {
      * @return CODE 200 if successfully logged in
      * @see User#addAuthCookie
      */
-    @RequestMapping("/api/user/login") // @PostMapping
+    @PostMapping("/api/user/login")
     public ResponseEntity<String> login(@CookieValue(value = "auth", defaultValue = "") String auth,
                                         @RequestParam(value = "username") String username,
                                         @RequestParam(value = "password") String password,
@@ -161,8 +163,8 @@ public class User {
      * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-out)
      * @return CODE 200 if successfully logged out
      */
-    @RequestMapping("/api/user/logout") //@PostMapping
-    public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "xd") String auth) {
+    @PostMapping("/api/user/logout")
+    public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "") String auth) {
         try {
             if (checkFalseCookie(auth)) {
                 return new ResponseEntity<>("No user to log out (CODE 409)", HttpStatus.CONFLICT);
@@ -193,7 +195,7 @@ public class User {
      * @return CODE 200 if successfully logged in
      * @see User#addAuthCookie
      */
-    @RequestMapping("/api/user/register") //@PostMapping
+    @PostMapping("/api/user/register")
     public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
                                            @RequestParam(value = "username") String username,
                                            @RequestParam(value = "password") String password,

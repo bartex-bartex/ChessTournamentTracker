@@ -16,6 +16,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Implements logic for endpoints connected with tournament.
+ */
 @RestController
 @CrossOrigin("*")
 public class Tournament {
@@ -174,7 +177,7 @@ public class Tournament {
      * @param auth authentication cookie
      * @return CODE 200 if generated successfully
      */
-    @RequestMapping("/api/tournament/generateRoundPairings") // PostMapping
+    @PutMapping("/api/tournament/generateRoundPairings")
     public ResponseEntity<String> generateRoundPairings(@RequestParam(value = "tournamentId") int tournamentId,
                                                         @RequestParam(value = "round") int round,
                                                         @CookieValue(value = "auth") String auth){
@@ -333,7 +336,7 @@ public class Tournament {
      * @param info info about tournament
      * @return CODE 200 if tournament was successfully created
      */
-    @RequestMapping("/api/tournament/create") //@PostMapping
+    @PostMapping("/api/tournament/create")
     public ResponseEntity<String> create(@CookieValue(value = "auth", defaultValue = "") String auth,
                                          @RequestParam(value = "tournamentName") String name,
                                          @RequestParam(value = "location") String location,
@@ -403,7 +406,7 @@ public class Tournament {
      * @param tournamentId tournament unique id
      * @return CODE 200 if user successfully joined
      */
-    @RequestMapping("/api/tournament/join/{tournamentId}") //@PostMapping
+    @PostMapping("/api/tournament/join/{tournamentId}")
     public ResponseEntity<String> join(@CookieValue(value = "auth", defaultValue = "") String auth,
                                        @PathVariable int tournamentId){
         int userId = -1;
@@ -696,7 +699,7 @@ public class Tournament {
      * @return CODE 200 if add match successfully added
      * @deprecated
      */
-    @RequestMapping("/api/tournament/round/addmatch") // @PutMapping
+    @PutMapping("/api/tournament/round/addmatch")
     public ResponseEntity<String> addMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                            @RequestParam(value = "tournamentId") int tournamentId,
                                            @RequestParam(value = "whitePlayerId") int wId,
@@ -814,7 +817,7 @@ public class Tournament {
      * @param gameNotation game notation
      * @return 200 if match successfully updated
      */
-    @RequestMapping("/api/tournament/round/updatematch") // @PutMapping
+    @PatchMapping("/api/tournament/round/updatematch")
     public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                               @RequestParam(value = "matchId") int matchId,
                                               @RequestParam(value = "score", defaultValue = "2") int score,
@@ -896,7 +899,7 @@ public class Tournament {
      * @return code 200 if match successfully deleted
      * @deprecated
      */
-    @RequestMapping("/api/tournament/round/removematch") // @DeleteMapping
+    @DeleteMapping("/api/tournament/round/removematch")
     public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                               @RequestParam(value = "matchId") int matchId
     ){
@@ -936,7 +939,7 @@ public class Tournament {
      * @param auth authentication cookie
      * @return CODE 200 if successfully started
      */
-    @RequestMapping("/api/tournament/start/{tournamentId}") //@PutMapping
+    @PatchMapping("/api/tournament/start/{tournamentId}")
     public ResponseEntity<String> startTournament(@PathVariable (value="tournamentId")int tournamentId,
                                                   @CookieValue (value="auth", defaultValue = "") String auth){
         int userId = -1;
@@ -1001,7 +1004,7 @@ public class Tournament {
      * @param auth authentication cookie
      * @return CODE 200 if successfully started
      */
-    @RequestMapping("/api/tournament/end/{tournamentId}") //@PutMapping
+    @PatchMapping("/api/tournament/end/{tournamentId}")
     public ResponseEntity<String> endTournament(@PathVariable (value="tournamentId")int tournamentId,
                                                 @CookieValue (value="auth", defaultValue = "") String auth){
         int userId = -1;
