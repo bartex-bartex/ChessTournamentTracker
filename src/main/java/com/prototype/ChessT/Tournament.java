@@ -225,7 +225,7 @@ public class Tournament {
                 list.add(new Player(rs.getInt(1), rs.getInt(2), rs.getInt(3)));
             }
             if (list.isEmpty())
-                return new ResponseEntity<>("Nie ma graczy",HttpStatus.I_AM_A_TEAPOT);
+                return new ResponseEntity<>("There are no players in that tournament (CODE 409)",HttpStatus.CONFLICT);
             for (Player player : list) {
                 query = String.format("""
                         select 'bialy' as kolor,
