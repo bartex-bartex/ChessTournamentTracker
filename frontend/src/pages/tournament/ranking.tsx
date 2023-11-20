@@ -12,6 +12,7 @@ interface TournamentInfo {
   name: string;
   location: string;
   rounds: string;
+  players: any;
   tournament_id: string;
   start_date: string;
   info: string;
@@ -26,7 +27,7 @@ interface PlayerInfo {
   score: string;
 }
 
-export default function Ranking() {
+export default function TournamentRanking() {
   const { id } = useParams();
   const [tournamentInfo, setTournamentInfo] = useState<TournamentInfo | null>(null);
 
@@ -51,7 +52,7 @@ export default function Ranking() {
 
   return (
     <div className={styles['ranking']}>
-      <TournamentNavbar tournamentId={id} />
+      <TournamentNavbar tournamentInfo={tournamentInfo} />
       <div className={styles['ranking-container']}>
         <h1>{tournamentInfo ? 'Tournament Ranking' : ''}</h1>
         <div className={styles['ranking-list']}>
@@ -62,20 +63,20 @@ export default function Ranking() {
                 <table className={styles['ranking-table']}>
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th>Order</th>
                       <th>Name</th>
                       <th>FIDE Rating</th>
-                      <th>Score (Pt)</th>
+                      <th>Points (Pt)</th>
                       <th>FIDE Change</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {tournamentInfo.player_data.map((data) => (
+                    {tournamentInfo.player_data.map((data, i) => (
                       <tr key={data.player_id}>
-                        <td>{data.player_id}</td>
+                        <td>{i + 1}</td>
                         <td>{data.first_name} {data.last_name}</td>
                         <td>{data.start_fide}</td>
-                        <td>{data.score}</td>
+                        <td>{data.score || 0}</td>
                         <td>{data.change_in_fide}</td>
                       </tr>
                     ))}

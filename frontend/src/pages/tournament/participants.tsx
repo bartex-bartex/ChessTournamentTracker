@@ -35,7 +35,7 @@ interface Players {
   fide: string;
 }
 
-export default function Participants() {
+export default function TournamentParticipants() {
   const { id } = useParams();
   const [tournamentInfo, setTournamentInfo] = useState<TournamentInfo | null>(null);
 
@@ -73,7 +73,7 @@ export default function Participants() {
 
   return (
     <div className={styles['participants']}>
-      <TournamentNavbar tournamentId={id} tournamentStarted={tournamentInfo && !tournamentInfo.players} />
+      <TournamentNavbar tournamentInfo={tournamentInfo} />
       <div className={styles['participants-container']}>
         <h1>{tournamentInfo ? tournamentInfo.name : ''}</h1>
         <div className={styles['participants-list']}>

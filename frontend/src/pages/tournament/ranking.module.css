@@ -43,10 +43,6 @@
     padding: 8px;
 }
 
-.ranking-table td:not(:first-child) {
-    border-left: 3px solid var(--green);
-}
-
 .ranking-table tr:nth-child(odd) {
     background-color: var(--brown);
 }

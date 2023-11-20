@@ -14,8 +14,7 @@ import Tournament from "./pages/tournament";
 import TournamentParticipants from "./pages/tournament/participants";
 import TournamentRanking from "./pages/tournament/ranking";
 import TournamentResults from "./pages/tournament/results";
-import TournamentMatches from "./pages/tournament/matches";
-import TournamentMatchesView from "./pages/tournament/matches/view";
+import TournamentRound from "./pages/tournament/round";
 import NotFound from "./pages/not-found";
 
 import Context from "./context";
@@ -66,12 +65,8 @@ function App() {
               Component={TournamentResults}
             />
             <Route
-              path="/tournament/:id/matches"
-              Component={TournamentMatches}
-            />
-            <Route
-              path="/tournament/:id/matches/:matchId"
-              Component={TournamentMatchesView}
+              path="/tournament/:tournamentId/round/:round"
+              Component={TournamentRound}
             />
             <Route path="*" Component={NotFound} />
           </Routes>

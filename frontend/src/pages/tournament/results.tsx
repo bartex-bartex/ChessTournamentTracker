@@ -9,6 +9,7 @@ interface TournamentInfo {
   time_control: string;
   tournament_state: string;
   player_data: PlayerInfo[];
+  players: any;
   name: string;
   location: string;
   rounds: string;
@@ -26,7 +27,7 @@ interface PlayerInfo {
   score: string;
 }
 
-export default function Results() {
+export default function TournamentResults() {
   const { id } = useParams();
   const [tournamentInfo, setTournamentInfo] = useState<TournamentInfo | null>(null);
 
@@ -51,7 +52,7 @@ export default function Results() {
 
   return (
     <div className={styles['results']}>
-      <TournamentNavbar tournamentId={id} />
+      <TournamentNavbar tournamentInfo={tournamentInfo} />
       <div className={styles['results-container']}>
         <h1>{tournamentInfo ? 'Tournament Results' : ''}</h1>
         <div className={styles['results-list']}>
@@ -62,19 +63,19 @@ export default function Results() {
                 <table className={styles['results-table']}>
                   <thead>
                     <tr>
-                      <th>Player Number</th>
-                      <th>Player Name</th>
+                      <th>Order</th>
+                      <th>Name</th>
                       <th>FIDE Rating</th>
                       <th>Points (Pt)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {tournamentInfo.player_data.map((data) => (
+                    {tournamentInfo.player_data.map((data, i) => (
                       <tr key={data.player_id}>
-                        <td>{data.player_id}</td>
+                        <td>{i + 1}</td>
                         <td>{data.first_name} {data.last_name}</td>
                         <td>{data.start_fide}</td>
-                        <td>{data.score}</td>
+                        <td>{data.score || 0}</td>
                       </tr>
                     ))}
                   </tbody>

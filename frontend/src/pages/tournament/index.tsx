@@ -33,7 +33,7 @@ export default function Tournament() {
 
   return (
     <div className={styles["tournament"]}>
-      <TournamentNavbar tournamentId={id} tournamentStarted={info && !info.players} />
+      <TournamentNavbar tournamentInfo={info} />
       <div className={styles["tournament-container"]}>
         <h1>{info ? info.name : ""}</h1>
         <p>{info ? info.info : ""}</p>
@@ -86,6 +86,21 @@ export default function Tournament() {
               alert('Failed to join tournament: ' + await response.text());
             }
           }} />
+        ) : (info && !info.players ? (
+          <Button text="End Tournament" onClick={async () => {
+            // Send post to /api/tournament/start/{tournamentId}
+            // on success reload tournament info
+            const response = await fetch('/api/tournament/end/' + id, {
+              method: 'PATCH',
+            });
+
+            if (response.ok) {
+              alert('Tournament ended.');
+              loadTournamentInfo();
+            } else {
+              alert('Failed to end the tournament: ' + await response.text());
+            }
+          }} />
         ) : (
           <Button text="Start Tournament" onClick={async () => {
             // Send post to /api/tournament/start/{tournamentId}
@@ -95,13 +110,13 @@ export default function Tournament() {
             });
 
             if (response.ok) {
-              alert('Tournament started!');
+              alert('Tournament started.');
               loadTournamentInfo();
             } else {
               alert('Failed to start tournament: ' + await response.text());
             }
           }} />
-        ))}
+        )))}
       </div>
     </div>
   );

@@ -651,7 +651,7 @@ public class Tournament {
     try {
       Statement st = ChessTournamentApplication.connection.createStatement();
       String query = String.format(
-          "select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,'') as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;",
+          "select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,0) as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;",
           tournamentId, round);
       ResultSet rs = st.executeQuery(query);
       ResultSetMetaData rsmd = rs.getMetaData();
@@ -985,11 +985,16 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                                               @RequestParam(value = "score", defaultValue = "2") int score,
                                               @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
     ){
+        // UWAGA UWAGA
+        // Panowie, proszę o zaktualizowanie tego endpointa w taki sposób by dało się zerować (ustawiać na 2) wynik meczu.
+        // Zerowanie gameNotation (ustawianie do pustego stringa) raczej nie będzie potrzebne.
+        // Z tego co tutaj jest napisane wynika, że wyzerowanie wyniku nie usunie fide changes z bazy danych.
+        // Fajnie jednak jeśli dałoby się usunąć wcześniej wpisany wynik jeśli ktoś pomyli się i wpisze go w złym wierszu np. parze osób, których mecz jeszcze nie został oceniony i nie posiada wyniku.
         if(score <-1 || score >2){
             return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
         }
-        if(score == 2 && gameNotation.isEmpty())
-            return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
+        // if(score == 2 && gameNotation.isEmpty())
+        //     return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
         int userId = -1;
         try{
             userId = User.checkCookie(auth);
@@ -1002,21 +1007,29 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
             String query = String.format("select role from tournament_roles join matches using(tournament_id) where match_id = %d and user_id = %d;",matchId,userId);
             ResultSet rs = st.executeQuery(query);
             if (rs.next() && rs.getString(1).equals("admin")){
-                matchId = rs.getInt(1);
-                int mode = 0;
-                if(score == 2) mode+=1;
-                if(gameNotation.isEmpty()) mode+=2;
+                // matchId = rs.getInt(1); Po co to, skoro matchId mamy z requesta???
+                // Najpierw czy chcemy edytować score?
+                int mode = (score >= -1 && score <= 2 ? 2 : 0); // 00 lub 10
+                          // Czy chcemy edytować też gameNotation?
+                          mode +=
+                              (!gameNotation.isEmpty() ? 1 : 0); // ?0 lub ?1
 
-                query = switch (mode) {
-                    case 1 ->
-                            String.format("update matches set game_notation = '%s' where match_id = %d;", gameNotation, matchId);
-                    case 2 ->
-                            String.format("update matches set score = %d where match_id = %d;", score, matchId);
+                          query = switch (mode) {
+                    case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
+                            "";
+                    case 1 -> // 01 = Chcemy edytować tylko gameNotation
+                            String.format("UPDATE matches SET game_notation = '%s' WHERE match_id = %d;", gameNotation, matchId);
+                    case 2 -> // 10 = Chcemy edytować tylko score
+                            String.format("UPDATE matches SET score = %d WHERE match_id = %d;", score, matchId);
+                    case 3 -> // 11 = Chcemy edytować i score i gameNotation
+                            String.format("UPDATE matches SET score = %d, game_notation = '%s' WHERE match_id = %d;", score, gameNotation, matchId);
                     default ->
-                            String.format("update matches set score = %d, game_notation = '%s' where match_id = %d;", score, gameNotation, matchId);
+                            throw new IllegalStateException("Unexpected value: " + mode);
                 };
+                if (query.isEmpty())
+                    return new ResponseEntity<>("No data to update (CODE 409)", HttpStatus.CONFLICT);
                 st.execute(query);
-                if(score != 2){
+                if(-1 <= score && score <= 2){
                     query = String.format("select count(*) from fide_changes where match_id = %d;", matchId);
                     rs = st.executeQuery(query);
                     rs.next();
@@ -1045,10 +1058,12 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                     st.execute(query);
                     return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
                 }
+                return new ResponseEntity<>("No data to update (CODE 409)", HttpStatus.CONFLICT);
             }
             return new ResponseEntity<>("No such tournament or no permissions to add match (CODE 409)",HttpStatus.CONFLICT);
         }
         catch (Exception e) {
+            System.out.println(e.getMessage());
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -1124,34 +1139,34 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                     rs.next();
                     switch(rs.getInt(1)) {
                         case 1:
-                          return new ResponseEntity<>(
-                              "This tournament is in progress (CODE 409)",
-                              HttpStatus.CONFLICT);
-                        case 2:
-                          return new ResponseEntity<>(
-                              "This tournament has finished (CODE 409)",
-                              HttpStatus.CONFLICT);
-                        }
-                        query = String.format(
-                            "select count(*) from tournament_roles where role = 'player' and tournament_id = %d;",
-                            tournamentId);
-                        rs = st.executeQuery(query);
-                        rs.next();
-                        int playercount = rs.getInt(1);
-                        if (playercount <= 1)
-                          return new ResponseEntity<>(
-                              "Not enough players to start tournament",
-                              HttpStatus.CONFLICT);
+                      return new ResponseEntity<>(
+                          "This tournament is in progress (CODE 409)",
+                          HttpStatus.CONFLICT);
+                    case 2:
+                      return new ResponseEntity<>(
+                          "This tournament has finished (CODE 409)",
+                          HttpStatus.CONFLICT);
+                    }
+                    query = String.format(
+                        "select count(*) from tournament_roles where role = 'player' and tournament_id = %d;",
+                        tournamentId);
+                    rs = st.executeQuery(query);
+                    rs.next();
+                    int playercount = rs.getInt(1);
+                    if (playercount <= 1)
+                      return new ResponseEntity<>(
+                          "Not enough players to start tournament",
+                          HttpStatus.CONFLICT);
 
-                        query = String.format(
-                            "select rounds from tournaments where tournament_id = %d;",
-                            tournamentId);
-                        rs = st.executeQuery(query);
-                        if (!rs.next() || (playercount % 2 == 1 &&
-                                           rs.getInt(1) > playercount))
-                          return new ResponseEntity<>(
-                              "Number of players is odd and is smaller than number of rounds (CODE 409)",
-                              HttpStatus.CONFLICT);
+                    query = String.format(
+                        "select rounds from tournaments where tournament_id = %d;",
+                        tournamentId);
+                    rs = st.executeQuery(query);
+                    if (!rs.next() ||
+                        (playercount % 2 == 1 && rs.getInt(1) > playercount))
+                      return new ResponseEntity<>(
+                          "Number of players is odd and is smaller than number of rounds (CODE 409)",
+                          HttpStatus.CONFLICT);
 
                     query = String.format("""
 							UPDATE tournament_roles
@@ -1165,47 +1180,50 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                     if(firstRoundPairings(tournamentId))
                         return new ResponseEntity<>("Tournament successfully began (CODE 200)", HttpStatus.OK);
                     return new ResponseEntity<>("Tournament began, but there aren't any players in the tournament or cos wyjebalo sie na glupi ryj (CODE ???)", HttpStatus.OK);
+                        }
+                } else {
+                        return new ResponseEntity<>(
+                            "No such tournament or user is not a member of the tournament (CODE 409)",
+                            HttpStatus.CONFLICT);
                 }
-      } else {
-                return new ResponseEntity<>(
-                    "No such tournament or user is not a member of the tournament (CODE 409)",
-                    HttpStatus.CONFLICT);
       }
-    } catch (Exception e) {
-      return new ResponseEntity<>("Internal server error (CODE 500)",
-                                  HttpStatus.INTERNAL_SERVER_ERROR);
+      catch (Exception e) {
+                return new ResponseEntity<>("Internal server error (CODE 500)",
+                                            HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
-  }
-  /**
-   * Ends the tournament if it hasn't already ended
-   * @param tournamentId unique tournament id
-   * @param auth authentication cookie
-   * @return CODE 200 if successfully started
-   */
-  @PatchMapping("/api/tournament/end/{tournamentId}")
-  public ResponseEntity<String>
-  endTournament(@PathVariable(value = "tournamentId") int tournamentId,
-                @CookieValue(value = "auth", defaultValue = "") String auth) {
-    int userId = -1;
-    try {
-      userId = User.checkCookie(auth);
-    } catch (Exception e) {
-      return new ResponseEntity<>(
-          "No or expired authorization token (CODE 401)",
-          HttpStatus.UNAUTHORIZED);
-    }
-    try {
-      Statement st = ChessTournamentApplication.connection.createStatement();
-      String query = String.format(
-          "select role from tournament_roles where tournament_id = %d and user_id = %d;",
-          tournamentId, userId);
-      ResultSet rs = st.executeQuery(query);
-      if (rs.next()) {
-                if (!rs.getString(1).equals("admin")) {
+    /**
+     * Ends the tournament if it hasn't already ended
+     * @param tournamentId unique tournament id
+     * @param auth authentication cookie
+     * @return CODE 200 if successfully started
+     */
+    @
+    PatchMapping(
+        "/api/tournament/end/{tournamentId}") public ResponseEntity<String>
+    endTournament(@PathVariable(value = "tournamentId") int tournamentId,
+                  @CookieValue(value = "auth", defaultValue = "") String auth) {
+      int userId = -1;
+      try {
+                userId = User.checkCookie(auth);
+      } catch (Exception e) {
+                return new ResponseEntity<>(
+                    "No or expired authorization token (CODE 401)",
+                    HttpStatus.UNAUTHORIZED);
+      }
+      try {
+                Statement st =
+                    ChessTournamentApplication.connection.createStatement();
+                String query = String.format(
+                    "select role from tournament_roles where tournament_id = %d and user_id = %d;",
+                    tournamentId, userId);
+                ResultSet rs = st.executeQuery(query);
+                if (rs.next()) {
+                        if (!rs.getString(1).equals("admin")) {
                     return new ResponseEntity<>(
                         "User is not an admin of this tournament (CODE 401)",
                         HttpStatus.UNAUTHORIZED);
-                } else {
+                        } else {
                     query = String.format(
                         "select tournament_state from tournaments where tournament_id = %d;",
                         tournamentId, userId);
@@ -1227,29 +1245,29 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
 							WHERE tournament_id = %d;""", tournamentId);
                     st.execute(query);
                     return new ResponseEntity<>("Tournament has ended! (CODE 200)", HttpStatus.OK);
+                        }
+                } else {
+                        return new ResponseEntity<>(
+                            "No such tournament or user is not a member of the tournament (CODE 409)",
+                            HttpStatus.CONFLICT);
                 }
-      } else {
-                return new ResponseEntity<>(
-                    "No such tournament or user is not a member of the tournament (CODE 409)",
-                    HttpStatus.CONFLICT);
+      } catch (Exception e) {
+                return new ResponseEntity<>("Internal server error (CODE 500)",
+                                            HttpStatus.INTERNAL_SERVER_ERROR);
       }
-    } catch (Exception e) {
-      return new ResponseEntity<>("Internal server error (CODE 500)",
-                                  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * Computes fide change based on player ratings, score of the match and K
+     * value
+     * @param R rating of player
+     * @param oR rating of opponent
+     * @param K constant K
+     * @param S score
+     * @return change of ranking
+     */
+    private static int fideChange(int R, int oR, int K, float S) {
+      float p = (float)(1.f / (1 + Math.pow(10.f, (oR - R) / 400.f)));
+      return (int)(K * (S - p));
     }
   }
-
-  /**
-   * Computes fide change based on player ratings, score of the match and K
-   * value
-   * @param R rating of player
-   * @param oR rating of opponent
-   * @param K constant K
-   * @param S score
-   * @return change of ranking
-   */
-  private static int fideChange(int R, int oR, int K, float S) {
-    float p = (float)(1.f / (1 + Math.pow(10.f, (oR - R) / 400.f)));
-    return (int)(K * (S - p));
-  }
-}

@@ -43,10 +43,6 @@
     padding: 8px;
 }
 
-.results-table td:not(:first-child) {
-    border-left: 3px solid var(--green);
-}
-
 .results-table tr:nth-child(odd) {
     background-color: var(--brown);
 }
