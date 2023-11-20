@@ -782,27 +782,38 @@ public class Tournament {
                            int tournamentId) throws SQLException {
     Statement st = ChessTournamentApplication.connection.createStatement();
     String query = String.format("""
-    			select player_id,first_name,last_name, tr.start_fide,
-    coalesce(change_in_rank,0) as change_in_fide, sum(score1) +\s
-    (SELECT
-    CASE WHEN BYE = 0 THEN 0 ELSE 1 			END FROM
-    tournament_roles where user_id = player_id AND tournament_id = %d) as score
-    from (select
-    m.white_player_id as player_id, 			sum((CASE
-    WHEN score = 1 THEN 1 WHEN score = 0 THEN 0.5 			WHEN
-    score = -1 THEN 0 ELSE null END)) as score1 			from
-    matches m join users u on m.black_player_id = u.user_id
-    where tournament_id = %d group by m.white_player_id union select
-    black_player_id as player_id, 			sum((CASE WHEN score = 1
-    THEN 0 			WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 1
-    ELSE null END)) as score1 from matches m join users u on
-    m.white_player_id = u.user_id where tournament_id = %d
-    group by m.black_player_id) as dupa join users uk on player_id = uk.user_id join
-    tournament_roles tr on player_id = tr.user_id and tournament_id = %d left
-    join (select user_id, sum(value) as change_in_rank from fide_changes join
-    matches using(match_id) where tournament_id = %d group by user_id) f on
-    f.user_id = player_id group by player_id,
-    first_name,last_name,start_fide,change_in_rank;
+      select
+      first_name,                                     player_id,
+     tr.start_fide,                                 last_name,
+ coalesce(change_in_rank,                        0) as change_in_fide,
+sum(score1)    +    (SELECT                       CASE WHEN BYE = 0 THEN
+0    ELSE    1   END   FROM                      tournament_roles where
+user_id   =  player_id  AND                      tournament_id = %d) as
+score      from     (select                      m.white_player_id   as
+player_id,  sum((CASE WHEN                       score = 1 THEN 1 WHEN
+ score  = 0 THEN 0.5 WHEN                         score  =  -1 THEN 0
+  ELSE  null  END))  as                             score1    from
+   matches   m   join                                users
+       u      on
+
+
+
+
+
+                                                                m.black_player_id
+=  u.user_id  where                                                tournament_id   =  %d
+group                 by                                       m.white_player_id   union
+select  black_player_id  as                                  player_id, sum((CASE WHEN
+score = 1 THEN 0 WHEN score = 0               THEN  0.5 WHEN score = -1 THEN 1 ELSE
+null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
+ u.user_id where tournament_id = %d group by m.black_player_id) as dupa join
+   users uk on player_id = uk.user_id join tournament_roles tr on player_id
+   =  tr.user_id  and  tournament_id  =  %d left join (select user_id,
+    sum(value)  as  change_in_rank  from fide_changes join matches
+       using(match_id)   where   tournament_id  =  %d  group  by
+            user_id)  f  on  f.user_id = player_id group by
+                player_id,    first_name,   last_name,
+                       start_fide, change_in_rank;
     			""",tournamentId,tournamentId,tournamentId,tournamentId,tournamentId);
     // japierdole :) :)) :) :) :) :)
 

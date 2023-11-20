@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 type Props = {
     tournamentId?: string;
-    tournamentStarted?: boolean;
+    tournamentStarted?: any;
 };
 
 const TournamentNavbar = ({ tournamentId, tournamentStarted }: Props) => {

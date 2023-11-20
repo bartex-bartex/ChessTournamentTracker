@@ -73,7 +73,7 @@ export default function Participants() {
 
   return (
     <div className={styles['participants']}>
-      <TournamentNavbar tournamentId={id} />
+      <TournamentNavbar tournamentId={id} tournamentStarted={tournamentInfo && !tournamentInfo.players} />
       <div className={styles['participants-container']}>
         <h1>{tournamentInfo ? tournamentInfo.name : ''}</h1>
         <div className={styles['participants-list']}>
