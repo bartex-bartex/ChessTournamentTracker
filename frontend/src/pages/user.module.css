@@ -1,0 +1,40 @@
+.user {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 100px;
+    height: 100%;
+}
+
+.user-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 20px;
+    margin-bottom: 100px;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.user-details-table {
+    border-collapse: collapse;
+    width: 500px;
+    background-color: var(--yellow);
+}
+
+.user-details-table td {
+    padding: 8px;
+}
+
+.user-details-table td:not(:first-child) {
+    border-left: 3px solid var(--green);
+}
+
+.user-details-table tr:nth-child(odd) {
+    background-color: var(--brown);
+}

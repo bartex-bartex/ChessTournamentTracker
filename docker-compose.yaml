@@ -1,0 +1,84 @@
+version: '3'
+services:
+  # Postgres Database
+  # Default credentials: postgres:postgres@postgres
+  postgres:
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGDATA: /mount/data
+    image: postgres:14-alpine
+    expose:
+      - 5432
+    volumes:
+      - ./data/postgres:/mount/data
+      - ./data/postgres-dump:/mount/dump
+
+  # Development Postgres Admin Console
+  # Authentication disabled
+  pgadmin:
+    image: dpage/pgadmin4
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: root@root.root
+      PGADMIN_DEFAULT_PASSWORD: root
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - 127.0.0.1:5433:80 # Expose to localhost
+    volumes:
+      - ./data/pgadmin:/var/lib/pgadmin
+
+  # Frontend server
+  frontend:
+    command: yarn start
+    # environment:
+    #   PUBLIC_URL: https://chess-tournament-tracker.com
+    image: node:16-alpine
+    ports:
+      - 127.0.0.1:3000:3000 # Expose to localhost
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+
+  # Development
+  dev:
+    command: ./gradlew runDev
+    depends_on:
+      - frontend
+      - postgres
+      - pgadmin
+    environment:
+      PGHOST: postgres # This is the hostname of the postgres container
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    image: amazoncorretto:21-alpine
+    ports:
+      - 8080:8080 # Expose to WAN (useful for testing on mobile devices in the same network)
+    volumes:
+      - ./:/app
+    working_dir: /app
+
+  # # Production
+  # deploy:
+  #   build:
+  #     context: .
+  #   command: yarn run next start
+  #   depends_on:
+  #     - postgres
+  #     - minio
+  #   environment:
+  #     PGHOST: postgres
+  #     PGPORT: 5432
+  #     PGDATABASE: ChessTournamentTracker
+  #     PGUSER: postgres
+  #     PGPASSWORD: postgres
+  #     PORT: 3000
+  #   ports:
+  #     - 127.0.0.1:3000:3000 # Expose to localhost
+  #   restart: always # Restart on failure and system reboot
+    

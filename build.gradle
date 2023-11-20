@@ -26,3 +26,8 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+task runDev(type: JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	main = 'com.prototype.ChessT.ChessTournamentApplication'
+}
