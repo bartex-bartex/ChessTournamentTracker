@@ -1,29 +1,33 @@
 import styles from "./index.module.css";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/button";
 import TournamentNavbar from "../../components/tournament-navbar";
+import Context from "../../context";
 
 export default function Tournament() {
   const { id } = useParams();
   const [info, setInfo] = useState<any>(null);
   const navigate = useNavigate();
+  const context = useContext(Context);
+
+  const loadTournamentInfo = useCallback(async () => {
+    try {
+      const response = await fetch('/api/tournament/' + id);
+
+      if (!response.ok) {
+        alert("Failed to fetch tournament details: " + await response.text());
+      }
+      const body = await response.json();
+      setInfo(body);
+    } catch (err) {
+      setInfo("");
+    }
+  }, [id]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch('/api/tournament/' + id);
-
-        if (!response.ok) {
-          alert("Failed to fetch tournament details: " + await response.text());
-        }
-        const body = await response.json();
-        setInfo(body);
-      } catch (err) {
-        setInfo("");
-      }
-    })();
+    loadTournamentInfo();
   }, [id]);
 
 
@@ -68,20 +72,36 @@ export default function Tournament() {
             </tbody>
           </table>
         </div>
+        {context.signedInUser && (!info || info.is_admin === "0" ? (
+          <Button text="Join Tournament" onClick={async () => {
+            // Send post to /api/tournament/join/{tournamentId}
+            // if success, navigate to /tournament/{tournamentId}/participants
+            const response = await fetch('/api/tournament/join/' + id, {
+              method: 'POST',
+            });
 
-        <Button text="Join Tournament" onClick={async () => {
-          // Send post to /api/tournament/join/{tournamentId}
-          // if success, navigate to /tournament/{tournamentId}/participants
-          const response = await fetch('/api/tournament/join/' + id, {
-            method: 'POST',
-          });
+            if (response.ok) {
+              navigate('/tournament/' + id + '/participants');
+            } else {
+              alert('Failed to join tournament: ' + await response.text());
+            }
+          }} />
+        ) : (
+          <Button text="Start Tournament" onClick={async () => {
+            // Send post to /api/tournament/start/{tournamentId}
+            // on success reload tournament info
+            const response = await fetch('/api/tournament/start/' + id, {
+              method: 'PATCH',
+            });
 
-          if (response.ok) {
-            navigate('/tournament/' + id + '/participants');
-          } else {
-            alert('Failed to join tournament: ' + await response.text());
-          }
-        }} />
+            if (response.ok) {
+              alert('Tournament started!');
+              loadTournamentInfo();
+            } else {
+              alert('Failed to start tournament: ' + await response.text());
+            }
+          }} />
+        ))}
       </div>
     </div>
   );
