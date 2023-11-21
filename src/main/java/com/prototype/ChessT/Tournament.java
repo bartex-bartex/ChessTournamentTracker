@@ -663,8 +663,16 @@ public class Tournament {
     try {
       Statement st = ChessTournamentApplication.connection.createStatement();
       String query = String.format(
-          "select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,0) as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;",
-          tournamentId, round);
+              """
+                      select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,2) as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide,
+                      (SELECT sum(case when (score = 1 and m2.white_player_id = m.white_player_id) or (score = -1 and m2.black_player_id = m.white_player_id) then 1
+                                 when score = 0 then 0.5
+                                 else 0 end) from matches m2 where tournament_id = %d) as white_score,
+                                 (SELECT sum(case when (score = 1 and m2.white_player_id = m.black_player_id) or (score = -1 and m2.black_player_id = m.black_player_id) then 1
+                                 when score = 0 then 0.5
+                                 else 0 end) from matches m2 where tournament_id = %d) as black_score
+                      from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;""",
+          tournamentId, tournamentId, tournamentId, round);
       ResultSet rs = st.executeQuery(query);
       ResultSetMetaData rsmd = rs.getMetaData();
       JSONArray result = new JSONArray();
@@ -987,7 +995,7 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
      * Updates score and game notation of provided match
      * @param auth authorisation cookie
      * @param matchId unique match  id
-     * @param score score (1 - white player win, 0 - tie, -1 - black player win, other values = nodata)
+     * @param score score (1 - white player win, 0 - tie, -1 - black player win, 2 - deletes match score and associated fide changes, other values = nodata)
      * @param gameNotation game notation
      * @return 200 if match successfully updated
      */
@@ -1002,11 +1010,11 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
         // Zerowanie gameNotation (ustawianie do pustego stringa) raczej nie będzie potrzebne.
         // Z tego co tutaj jest napisane wynika, że wyzerowanie wyniku nie usunie fide changes z bazy danych.
         // Fajnie jednak jeśli dałoby się usunąć wcześniej wpisany wynik jeśli ktoś pomyli się i wpisze go w złym wierszu np. parze osób, których mecz jeszcze nie został oceniony i nie posiada wyniku.
-        if(score <-1 || score >2){
-            return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
-        }
-        // if(score == 2 && gameNotation.isEmpty())
-        //     return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
+        //if(score <-1 || score >3){
+        //    return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
+        //}
+        if((score > 2 || score < -1) && gameNotation.isEmpty())
+            return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
         int userId = -1;
         try{
             userId = User.checkCookie(auth);
@@ -1025,8 +1033,8 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                           // Czy chcemy edytować też gameNotation?
                 mode += (!gameNotation.isEmpty() ? 1 : 0); // ?0 lub ?1
                 query = switch (mode) {
-                    case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
-                            "";
+                    //case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
+                    //        "";
                     case 1 -> // 01 = Chcemy edytować tylko gameNotation
                             String.format("UPDATE matches SET game_notation = '%s' WHERE match_id = %d;", gameNotation, matchId);
                     case 2 -> // 10 = Chcemy edytować tylko score
@@ -1038,11 +1046,8 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                 };
                 if (score == 2 && mode >= 2)
                   query += String.format("delete from fide_changes where match_id = %d;",matchId);
-
-                if (query.isEmpty())
-                    return new ResponseEntity<>("No data to update (CODE 409)", HttpStatus.CONFLICT);
                 st.execute(query);
-                if(-1 <= score && score <= 2){
+                if(-1 <= score && score <= 1){
                     query = String.format("select count(*) from fide_changes where match_id = %d;", matchId);
                     rs = st.executeQuery(query);
                     rs.next();
