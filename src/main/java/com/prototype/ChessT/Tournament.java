@@ -250,6 +250,12 @@ public class Tournament {
             "In this round pairing is already generated (CODE 409)",
             HttpStatus.CONFLICT);
 
+      query = String.format("select (select count(*) from matches where tournament_id = %d and round = %d and score in(-1,0,1))/(select count(*) from matches where tournament_id = %d and round = %d) as is_prev_r_gen;",tournamentId,round-1,tournamentId,round-1);
+      rs = st.executeQuery(query);
+      rs.next();
+      if (rs.getInt(1) == 0)
+        return new ResponseEntity<>("Not all of scores from previous round were inserted. (CODE 409)",HttpStatus.CONFLICT);
+
       query = String.format(
           "select user_id, start_fide, bye from tournament_roles where role = 'player' and tournament_id = %d;",
           tournamentId);
@@ -585,6 +591,7 @@ public class Tournament {
           array.put(row);
         }
         result.put("players", array);
+
         return new ResponseEntity<>(result.toString(), HttpStatus.OK);
       }
       JSONArray playerData = results(tournamentId);
@@ -593,6 +600,11 @@ public class Tournament {
       //                 "No users in this tournament (CODE 409)",
       //                 HttpStatus.CONFLICT);
       // A to po co? Jeśli nie ma graczy to niech zwróci pustą tablicę
+
+      query = String.format("select max(round) from matches where tournament_id = %d;",tournamentId);
+      st.execute(query);
+      rs.next();
+      result.put("rounds_generated",rs.getInt(1));
       result.put("player_data", playerData);
       return new ResponseEntity<>(result.toString(), HttpStatus.OK);
     } catch (Exception e) {
@@ -1011,10 +1023,8 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                 // Najpierw czy chcemy edytować score?
                 int mode = (score >= -1 && score <= 2 ? 2 : 0); // 00 lub 10
                           // Czy chcemy edytować też gameNotation?
-                          mode +=
-                              (!gameNotation.isEmpty() ? 1 : 0); // ?0 lub ?1
-
-                          query = switch (mode) {
+                mode += (!gameNotation.isEmpty() ? 1 : 0); // ?0 lub ?1
+                query = switch (mode) {
                     case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
                             "";
                     case 1 -> // 01 = Chcemy edytować tylko gameNotation
@@ -1026,6 +1036,9 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                     default ->
                             throw new IllegalStateException("Unexpected value: " + mode);
                 };
+                if (score == 2 && mode >= 2)
+                  query += String.format("delete from fide_changes where match_id = %d;",matchId);
+
                 if (query.isEmpty())
                     return new ResponseEntity<>("No data to update (CODE 409)", HttpStatus.CONFLICT);
                 st.execute(query);
