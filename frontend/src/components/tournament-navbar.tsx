@@ -14,7 +14,7 @@ const TournamentNavbar = ({ tournamentInfo }: Props) => {
                 <Link className={styles["sub-navbar-link"]} to={`/tournament/${tournamentInfo.tournament_id}/participants`}>Participants</Link>
                 {tournamentInfo && !tournamentInfo.players && <><Link className={styles["sub-navbar-link"]} to={`/tournament/${tournamentInfo.tournament_id}/results`}>Results</Link>
                     { // Create links for each round (there are tournamentInfo.rounds rounds)
-                        [...Array(parseInt(tournamentInfo.rounds))].map((_, i) => (
+                        [...Array(parseInt(tournamentInfo.rounds_generated))].map((_, i) => (
                             <Link key={i} className={styles["sub-navbar-link"]} to={`/tournament/${tournamentInfo.tournament_id}/round/${i + 1}`}>&nbsp;&nbsp;Round {i + 1}</Link>
                         ))
                     }

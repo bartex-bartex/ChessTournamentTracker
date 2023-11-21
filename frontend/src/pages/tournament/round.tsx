@@ -43,28 +43,25 @@ export default function TournamentRound() {
     }
   }, [tournamentId, round]);
 
+  const fetchTournamentData = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/tournament/${tournamentId}`);
+      if (!response.ok) {
+        alert('Failed to fetch tournament details: ' + await response.text());
+        return;
+      }
+      const body = await response.json();
+      setTournamentInfo(body);
+    } catch (err) {
+      console.error('Error fetching tournament data:', err);
+      setTournamentInfo(null);
+    }
+  }, [tournamentId]);
+
   useEffect(() => {
     fetchRoundData();
-  }, [tournamentId, round]);
-
-  useEffect(() => {
-    const fetchTournamentData = async () => {
-      try {
-        const response = await fetch(`/api/tournament/${tournamentId}`);
-        if (!response.ok) {
-          alert('Failed to fetch tournament details: ' + await response.text());
-          return;
-        }
-        const body = await response.json();
-        setTournamentInfo(body);
-      } catch (err) {
-        console.error('Error fetching tournament data:', err);
-        setTournamentInfo(null);
-      }
-    };
-
     fetchTournamentData();
-  }, [tournamentId]);
+  }, [tournamentId, round]);
 
   return (
     <div className={styles['round']}>
@@ -75,7 +72,7 @@ export default function TournamentRound() {
           {roundInfo ? (
             <>
               <h4>{roundInfo.length > 0 ? "Matches in This Round" : "No matches available."}</h4>
-              {roundInfo.length > 0 && (
+              {roundInfo.length > 0 && tournamentInfo && (
                 <table className={styles['round-table']}>
                   <thead>
                     <tr>
@@ -91,38 +88,43 @@ export default function TournamentRound() {
                     {roundInfo.map((data, i) => (
                       <tr key={data.match_id}>
                         <td>{i + 1}</td>
-                        <td>TODO Backend</td>
+                        <td>{tournamentInfo.player_data.find((player: any) => player.player_id === data.white_player_id)?.score || 0}</td>
                         <td>{data.white_first_name} {data.white_last_name}</td>
                         <td>
-                          <select name="result" id="result" defaultValue={data.score} onChange={async e => {
-                            // PatchMapping("/api/tournament/round/updatematch")
-                            // public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
-                            //                                           @RequestParam(value = "matchId") int matchId,
-                            //                                           @RequestParam(value = "score", defaultValue = "2") int score,
-                            //                                           @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
-                            const selection = e.target.value;
-                            const result = await fetch("/api/tournament/round/updatematch?" + new URLSearchParams([
-                              ['matchId', data.match_id],
-                              ['score', selection],
-                              ['gameNotation', ''],
-                            ]).toString(), {
-                              method: "PATCH",
-                            });
+                          {tournamentInfo.is_admin == "1" ? (
+                            <select name="result" id="result" defaultValue={data.score} onChange={async e => {
+                              // PatchMapping("/api/tournament/round/updatematch")
+                              // public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
+                              //                                           @RequestParam(value = "matchId") int matchId,
+                              //                                           @RequestParam(value = "score", defaultValue = "2") int score,
+                              //                                           @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
+                              const selection = e.target.value;
+                              const result = await fetch("/api/tournament/round/updatematch?" + new URLSearchParams([
+                                ['matchId', data.match_id],
+                                ['score', selection],
+                                ['gameNotation', ''],
+                              ]).toString(), {
+                                method: "PATCH",
+                              });
 
-                            if (!result.ok) {
-                              alert("Failed to update match: " + await result.text());
-                            }
+                              if (!result.ok) {
+                                alert("Failed to update match: " + await result.text());
+                              }
 
-                            fetchRoundData();
-                          }}>
-                            <option value="1">1-0</option>
-                            <option value="0">1/2-1/2</option>
-                            <option value="-1">0-1</option>
-                            <option value="2">-</option>
-                          </select>
+                              fetchRoundData();
+                              fetchTournamentData();
+                            }}>
+                              <option value="1">1-0</option>
+                              <option value="0">1/2-1/2</option>
+                              <option value="-1">0-1</option>
+                              <option value="2">-</option>
+                            </select>
+                          ) : (
+                            data.score === "1" ? "1-0" : data.score === "0" ? "1/2-1/2" : data.score === "-1" ? "0-1" : "-"
+                          )}
                         </td>
                         <td>{data.black_first_name} {data.black_last_name}</td>
-                        <td>TODO Backend</td>
+                        <td>{tournamentInfo.player_data.find((player: any) => player.player_id === data.black_player_id)?.score || 0}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -602,13 +602,16 @@ public class Tournament {
       // A to po co? Jeśli nie ma graczy to niech zwróci pustą tablicę
 
       query = String.format("select max(round) from matches where tournament_id = %d;",tournamentId);
-      st.execute(query);
+      rs = st.executeQuery(query);
       rs.next();
       result.put("rounds_generated",rs.getInt(1));
       result.put("player_data", playerData);
       return new ResponseEntity<>(result.toString(), HttpStatus.OK);
     } catch (Exception e) {
       System.out.println(e.getMessage());
+      for (StackTraceElement ste : e.getStackTrace()) {
+        System.out.println(ste + "\n");
+      }
       return new ResponseEntity<>("Internal server error (CODE 500)",
                                   HttpStatus.INTERNAL_SERVER_ERROR);
     }
