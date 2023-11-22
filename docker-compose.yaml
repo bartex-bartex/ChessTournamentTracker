@@ -33,7 +33,7 @@ services:
 
   # Frontend server
   frontend:
-    command: yarn start
+    command: sh -c "yarn install && yarn start"
     # environment:
     #   PUBLIC_URL: https://chess-tournament-tracker.com
     image: node:16-alpine
@@ -45,7 +45,7 @@ services:
 
   # Development
   dev:
-    command: ./gradlew runDev
+    command: sh -c "dos2unix ./gradlew && ./gradlew runDev"
     depends_on:
       - frontend
       - postgres
