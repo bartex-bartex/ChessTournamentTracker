@@ -56,7 +56,7 @@ export default function Register() {
         <Input label="Sex" onChange={e => {
           setSex(e.target.value);
         }} />
-        <Input label="Date of Birth" onChange={e => {
+        <Input label="Date of Birth" type="date" onChange={e => {
           setDateOfBirth(e.target.value);
         }} />
       </div>
