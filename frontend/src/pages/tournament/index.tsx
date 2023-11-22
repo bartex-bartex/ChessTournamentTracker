@@ -73,7 +73,7 @@ export default function Tournament() {
           </table>
         </div>
         {context.signedInUser && (!info || info.is_admin === "0" ? (
-          <Button text="Join Tournament" onClick={async () => {
+          info && info.tournament_state === "0" && <Button text="Join Tournament" onClick={async () => {
             // Send post to /api/tournament/join/{tournamentId}
             // if success, navigate to /tournament/{tournamentId}/participants
             const response = await fetch('/api/tournament/join/' + id, {
@@ -87,20 +87,39 @@ export default function Tournament() {
             }
           }} />
         ) : (info && !info.players ? (
-          <Button text="End Tournament" onClick={async () => {
-            // Send post to /api/tournament/start/{tournamentId}
-            // on success reload tournament info
-            const response = await fetch('/api/tournament/end/' + id, {
-              method: 'PATCH',
-            });
+          info && info.tournament_state !== "2" ? <>
+            <Button text="End Tournament" onClick={async () => {
+              // Send post to /api/tournament/start/{tournamentId}
+              // on success reload tournament info
+              const response = await fetch('/api/tournament/end/' + id, {
+                method: 'PATCH',
+              });
 
-            if (response.ok) {
-              alert('Tournament ended.');
-              loadTournamentInfo();
-            } else {
-              alert('Failed to end the tournament: ' + await response.text());
-            }
-          }} />
+              if (response.ok) {
+                alert('Tournament ended.');
+                loadTournamentInfo();
+              } else {
+                alert('Failed to end the tournament: ' + await response.text());
+              }
+            }} />
+            <Button className={styles["begin-next-round"]} text="Begin Next Round" onClick={async () => {
+              // Send post to /api/tournament/generateRoundPairings
+              // on success reload tournament info
+              const response = await fetch('/api/tournament/generateRoundPairings?' + new URLSearchParams([
+                ["tournamentId", id!],
+                ["round", info.rounds_generated + 1],
+              ]), {
+                method: 'PUT',
+              });
+
+              if (response.ok) {
+                alert('Next round added successfully.');
+                loadTournamentInfo();
+              } else {
+                alert('Failed to add new round: ' + await response.text());
+              }
+            }} />
+          </> : "Tournament has ended."
         ) : (
           <Button text="Start Tournament" onClick={async () => {
             // Send post to /api/tournament/start/{tournamentId}

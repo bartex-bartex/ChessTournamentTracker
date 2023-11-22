@@ -42,3 +42,7 @@
 .tournament-details-table tr:nth-child(odd) {
     background-color: var(--brown);
 }
+
+.begin-next-round {
+    margin-top: 20px;
+}
