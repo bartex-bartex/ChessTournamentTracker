@@ -1050,6 +1050,9 @@ null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
                 if (score == 2 && mode >= 2)
                   query += String.format("delete from fide_changes where match_id = %d;",matchId);
                 st.execute(query);
+                if (score == 2 && mode >= 2) {
+                  return new ResponseEntity<>("Match successfully updated (CODE 200)", HttpStatus.OK);
+                }
                 if(-1 <= score && score <= 1){
                     query = String.format("select count(*) from fide_changes where match_id = %d;", matchId);
                     rs = st.executeQuery(query);
