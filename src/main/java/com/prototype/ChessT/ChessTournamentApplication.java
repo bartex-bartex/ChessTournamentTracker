@@ -9,10 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Runes spring application, manages database connection and implement helper
@@ -192,6 +189,33 @@ public class ChessTournamentApplication {
                             "Internal server error (CODE 500)",
                             HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+    /**
+     * Returns list of tournaments that matches provided text
+     * @param name
+     * @return JSON structured string that contains list of tournaments that matches provided name
+     */
+  @GetMapping("/api/search/{name}")
+  public ResponseEntity<String> search(
+          @PathVariable(value = "name") String name){
+      try{
+          Statement st = connection.createStatement();
+          String query = String.format("select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where name like '%%%s%%';",name);
+          ResultSet rs = st.executeQuery(query);
+          ResultSetMetaData rsmd = rs.getMetaData();
+          JSONArray result = new JSONArray();
+          while (rs.next()) {
+              JSONObject row = new JSONObject();
+              for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+                  row.put(rsmd.getColumnLabel(i), rs.getString(i));
+              }
+              result.put(row);
+          }
+          return new ResponseEntity<>(result.toString(),HttpStatus.OK);
+      }catch (Exception e){
+          return new ResponseEntity<>("Internal server error (CODE 500)",HttpStatus.INTERNAL_SERVER_ERROR);
+      }
   }
 
   /**
