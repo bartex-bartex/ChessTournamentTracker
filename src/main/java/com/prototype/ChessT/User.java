@@ -210,10 +210,10 @@ public class User {
         try {
             if (!checkFalseCookie(auth))
                 return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
-            // //Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character
-            // if(!validate("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",password))
-            //     return new ResponseEntity<>("Password is invalid (CODE 400)", HttpStatus.BAD_REQUEST);
-            // TODO: Niczego nie akceptuje
+
+            //Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character
+            if(!validate("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",password))
+                return new ResponseEntity<>("Password is invalid (CODE 400)", HttpStatus.BAD_REQUEST);
 
             if(!password.equals(password2))
                 return new ResponseEntity<>("Passwords are not equal (CODE 400)", HttpStatus.CONFLICT);
@@ -224,9 +224,8 @@ public class User {
             if(!validate("^[A-Za-z]+(?:[' -][A-Za-z]+)*$",name))
                 return new ResponseEntity<>("First name is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
 
-            // if(!validate("^[A-Za-z]+(?:[' -][A-Za-z]+)*$",lastname))
-            //     return new ResponseEntity<>("Last name is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
-            // ?????? Co to za regeksy matko boska
+            if(!validate("^[A-Za-z]+(?:[' -][A-Za-z]+)*$",lastname))
+                return new ResponseEntity<>("Last name is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
 
             if(!validate("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",date))
                 return new ResponseEntity<>("Wrong date format, date format should be yyyy-mm-dd (CODE 400)",HttpStatus.BAD_REQUEST);

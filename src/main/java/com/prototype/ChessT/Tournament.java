@@ -166,9 +166,9 @@ public class Tournament {
       }
       for (int i = start; i < list.size(); i += 2) {
         query = String.format(
-            "insert into matches (match_id,tournament_id,white_player_id,black_player_id,round,\"table\")\n"
+            "insert into matches (match_id,tournament_id,white_player_id,black_player_id,round,\"table\",score)\n"
                 +
-                "values ((select 1+coalesce(max(match_id),0) from matches),%d,%d,%d,1,%d);",
+                "values ((select 1+coalesce(max(match_id),0) from matches),%d,%d,%d,1,%d,2);",
             tournamentId, list.get(i).userId, list.get(i + 1).userId,
             i / 2 + 1);
         st.execute(query);
@@ -336,7 +336,7 @@ public class Tournament {
                       query = String.format(
                           "insert into matches(match_id, tournament_id, round, white_player_id, "
                               +
-                              "black_player_id,\"table\") values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d);",
+                              "black_player_id,\"table\",score) values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d,2);",
                           tournamentId, round,
                           (temp == 1 ? list.get(i).userId : list.get(j).userId),
                           (temp == 0 ? list.get(i).userId : list.get(j).userId),
@@ -355,7 +355,7 @@ public class Tournament {
                       query = String.format(
                           "insert into matches(match_id, tournament_id, round, white_player_id, "
                               +
-                              "black_player_id,\"table\") values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d);",
+                              "black_player_id,\"table\",score) values((select 1 + max(match_id) from matches),%d,%d,%d,%d,%d,2);",
                           tournamentId, round,
                           (temp == 1 ? list.get(i).userId : list.get(j).userId),
                           (temp == 0 ? list.get(i).userId : list.get(j).userId),
