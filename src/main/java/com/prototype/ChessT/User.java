@@ -12,10 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
@@ -144,9 +141,11 @@ public class User {
             if(!checkFalseCookie(auth)){
                 return new ResponseEntity<>("User is already logged in (CODE 409)", HttpStatus.CONFLICT);
             }
-            Statement st = ChessTournamentApplication.connection.createStatement();
-            String query = String.format("select user_id from users where username = '%s' and encrypted_password = '%s';", username, hashPassword(password, username));
-            ResultSet rs = st.executeQuery(query);
+            String query = "select user_id from users where username = ? and encrypted_password = ?;";
+            PreparedStatement preparedStatement = ChessTournamentApplication.connection.prepareStatement(query);
+            preparedStatement.setString(1,username);
+            preparedStatement.setString(2,hashPassword(password, username));
+            ResultSet rs = preparedStatement.executeQuery();
             if (!rs.next()) {
                 return new ResponseEntity<>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
             }
@@ -170,9 +169,10 @@ public class User {
             if (checkFalseCookie(auth)) {
                 return new ResponseEntity<>("No user to log out (CODE 409)", HttpStatus.CONFLICT);
             }
-            Statement st = ChessTournamentApplication.connection.createStatement();
-            String query = String.format("delete from sessions where session_id = '%s'", auth);
-            st.execute(query);
+            String query = "delete from sessions where session_id = ?";
+            PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
+            ps.setString(1, auth);
+            ps.execute(query);
             return new ResponseEntity<>("Successfully logged out (CODE 200)", HttpStatus.OK);
         }
         catch (Exception e){
@@ -241,8 +241,11 @@ public class User {
 
 
             Statement st = ChessTournamentApplication.connection.createStatement();
-            String query = String.format("select count(x) from (select * from users where username = '%s' or mail = '%s') as x", username, mail);
-            ResultSet rs = st.executeQuery(query);
+            String query ="select count(x) from (select * from users where username = ? or mail = ?) as x";
+            PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
+            ps.setString(1, username);
+            ps.setString(2, mail);
+            ResultSet rs = ps.executeQuery();
             rs.next();
             int rowCount = rs.getInt(1);
             if (rowCount == 0) {
@@ -253,7 +256,19 @@ public class User {
                 rs = st.executeQuery(query);
                 rs.next();
                 int id = 1 + rs.getInt(1);
-                query = String.format("insert into users values ('%d','%s','%s','%s','%s','%s','%s','%s',%d, %d)", id, username, mail, hashPassword(password, username), name, lastname, sex, date, fide, ChessTournamentApplication.kValue(fide, adult));
+                String query2 = "insert into users values (?,?,?,?,?,?,?,?,?,?)";
+                PreparedStatement ps2 = ChessTournamentApplication.connection.prepareStatement(query2);
+                ps2.setInt(1, id);
+                ps2.setString(2, username);
+                ps2.setString(3, mail);
+                ps2.setString(4, hashPassword(password, username));
+                ps2.setString(5, name);
+                ps2.setString(6, lastname);
+                ps2.setString(7, sex);
+                ps2.setDate(8, ChessTournamentApplication.StringToDate(date));
+                ps2.setInt(9, fide);
+                ps2.setInt(10, ChessTournamentApplication.kValue(fide, adult));
+
                 st.execute(query);
                 addAuthCookie(response, id);
                 return new ResponseEntity<>("Successfully registered (CODE 200)", HttpStatus.OK);
@@ -347,13 +362,16 @@ public class User {
      * @throws Exception if auth is older than 30 mins or doesn't exist at all
      */
     public static int checkCookie(String auth) throws Exception {
-        Statement st = ChessTournamentApplication.connection.createStatement();
-        String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
-        ResultSet rs = st.executeQuery(query);
+        String query = "Select user_id from sessions where session_id = ? and date > now() - interval '30' minute;";
+        PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
+        ps.setString(1, auth);
+        ResultSet rs = ps.executeQuery(query);
         if(rs.next()){
             int temp = rs.getInt(1);
-            query = String.format("Update sessions set date = now() where session_id = '%s' and date > now() - interval '30' minute;", auth);
-            st.execute(query);
+            query = "Update sessions set date = now() where session_id = ? and date > now() - interval '30' minute;";
+            ps = ChessTournamentApplication.connection.prepareStatement(query);
+            ps.setString(1, auth);
+            ps.execute(query);
             return temp;
         }
         throw new Exception("No such active auth token found");
@@ -371,9 +389,10 @@ public class User {
         if(auth.length()<30){
             return true;
         }
-        Statement st = ChessTournamentApplication.connection.createStatement();
-        String query = String.format("Select user_id from sessions where session_id = '%s' and date > now() - interval '30' minute;", auth);
-        ResultSet rs = st.executeQuery(query);
+        String query = "Select user_id from sessions where session_id = ? and date > now() - interval '30' minute;";
+        PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
+        ps.setString(1, auth);
+        ResultSet rs = ps.executeQuery(query);
         return !rs.next();
     }
 
