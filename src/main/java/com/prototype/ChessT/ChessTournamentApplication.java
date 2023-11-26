@@ -206,7 +206,7 @@ public class ChessTournamentApplication {
           String query = "select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where name like ?;";
           PreparedStatement ps = connection.prepareStatement(query);
           ps.setString(1, "%"+name+"%");
-          ResultSet rs = ps.executeQuery(query);
+          ResultSet rs = ps.executeQuery();
           ResultSetMetaData rsmd = rs.getMetaData();
           JSONArray result = new JSONArray();
           while (rs.next()) {

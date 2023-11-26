@@ -172,7 +172,7 @@ public class User {
             String query = "delete from sessions where session_id = ?";
             PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
             ps.setString(1, auth);
-            ps.execute(query);
+            ps.executeUpdate();
             return new ResponseEntity<>("Successfully logged out (CODE 200)", HttpStatus.OK);
         }
         catch (Exception e){
@@ -269,14 +269,14 @@ public class User {
                 ps2.setInt(9, fide);
                 ps2.setInt(10, ChessTournamentApplication.kValue(fide, adult));
 
-                st.execute(query);
+                ps2.executeUpdate();
                 addAuthCookie(response, id);
                 return new ResponseEntity<>("Successfully registered (CODE 200)", HttpStatus.OK);
             }
             return new ResponseEntity<>("User with this username or email already exists (CODE 409)", HttpStatus.CONFLICT);
         }
         catch(Exception e){
-            return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -365,13 +365,13 @@ public class User {
         String query = "Select user_id from sessions where session_id = ? and date > now() - interval '30' minute;";
         PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
         ps.setString(1, auth);
-        ResultSet rs = ps.executeQuery(query);
+        ResultSet rs = ps.executeQuery();
         if(rs.next()){
             int temp = rs.getInt(1);
             query = "Update sessions set date = now() where session_id = ? and date > now() - interval '30' minute;";
             ps = ChessTournamentApplication.connection.prepareStatement(query);
             ps.setString(1, auth);
-            ps.execute(query);
+            ps.executeUpdate();
             return temp;
         }
         throw new Exception("No such active auth token found");
@@ -392,7 +392,7 @@ public class User {
         String query = "Select user_id from sessions where session_id = ? and date > now() - interval '30' minute;";
         PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
         ps.setString(1, auth);
-        ResultSet rs = ps.executeQuery(query);
+        ResultSet rs = ps.executeQuery();
         return !rs.next();
     }
 
