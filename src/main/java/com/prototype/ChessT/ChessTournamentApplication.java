@@ -191,6 +191,11 @@ public class ChessTournamentApplication {
     }
   }
 
+    /**
+     * Returns list of tournaments that matches provided text
+     * @param name
+     * @return JSON structured string that contains list of tournaments that matches provided name
+     */
   @GetMapping("/api/search/{name}")
   public ResponseEntity<String> search(
           @PathVariable(value = "name") String name){
