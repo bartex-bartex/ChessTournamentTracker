@@ -3,6 +3,7 @@ package com.prototype.ChessT;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.validator.GenericValidator;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -262,6 +263,35 @@ public class User {
         catch(Exception e){
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    @GetMapping("/api/user/my-tournaments")
+    public ResponseEntity<String> myTournaments(
+            @CookieValue(value = "auth") String auth){
+        int userId = -1;
+        try{
+            userId = checkCookie(auth);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
+        }
+        try {
+            Statement st = ChessTournamentApplication.connection.createStatement();
+            String query = String.format("select role,tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournament_roles natural join tournaments where user_id = %d;", userId);
+            ResultSet rs = st.executeQuery(query);
+            ResultSetMetaData rsmd = rs.getMetaData();
+            JSONArray result = new JSONArray();
+            while (rs.next()) {
+                JSONObject row = new JSONObject();
+                for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+                    row.put(rsmd.getColumnLabel(i), rs.getString(i));
+                }
+                result.put(row);
+            }
+            return new ResponseEntity<>(result.toString(),HttpStatus.OK);
+        }
+        catch(Exception e){
+            return new ResponseEntity<>("Internal server error (CODE 500)",HttpStatus.INTERNAL_SERVER_ERROR);        }
     }
 
     /**
