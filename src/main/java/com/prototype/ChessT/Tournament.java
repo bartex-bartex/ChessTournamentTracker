@@ -805,40 +805,76 @@ public class Tournament {
                            int tournamentId) throws SQLException {
     Statement st = ChessTournamentApplication.connection.createStatement();
     String query = String.format("""
-      select
-      first_name,                                     player_id,
-     tr.start_fide,                                 last_name,
- coalesce(change_in_rank,                        0) as change_in_fide,
-sum(score1)    +    (SELECT                       CASE WHEN BYE = 0 THEN
-0    ELSE    1   END   FROM                      tournament_roles where
-user_id   =  player_id  AND                      tournament_id = %d) as
-score      from     (select                      m.white_player_id   as
-player_id,  sum((CASE WHEN                       score = 1 THEN 1 WHEN
- score  = 0 THEN 0.5 WHEN                         score  =  -1 THEN 0
-  ELSE  null  END))  as                             score1    from
-   matches   m   join                                users
-       u      on
-
-
-
-
-
-                                                                m.black_player_id
-=  u.user_id  where                                                tournament_id   =  %d
-group                 by                                       m.white_player_id   union all
-select  black_player_id  as                                  player_id, sum((CASE WHEN
-score = 1 THEN 0 WHEN score = 0               THEN  0.5 WHEN score = -1 THEN 1 ELSE
-null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
- u.user_id where tournament_id = %d group by m.black_player_id) as dupa join
-   users uk on player_id = uk.user_id join tournament_roles tr on player_id
-   =  tr.user_id  and  tournament_id  =  %d left join (select user_id,
-    sum(value)  as  change_in_rank  from fide_changes join matches
-       using(match_id)   where   tournament_id  =  %d  group  by
-            user_id)  f  on  f.user_id = player_id group by
-                player_id,    first_name,   last_name,
-                       start_fide, change_in_rank;
-    			""",tournamentId,tournamentId,tournamentId,tournamentId,tournamentId);
-    // japierdole :) :)) :) :) :) :)
+             select
+               uk.first_name,
+               uk.user_id,
+               tr.start_fide,
+               uk.last_name,
+               coalesce(change_in_rank, 0) as change_in_fide,
+               coalesce(sum(d.score1), 0) + (
+                 SELECT
+                   CASE WHEN BYE = 0 THEN 0 ELSE 1 END\s
+                 FROM
+                   tournament_roles tr2
+                 where
+                   tr2.user_id = uk.user_id
+                   AND tournament_id = 1
+               ) as score
+             from
+               (
+                 select
+                   m.white_player_id as player_id,
+                   sum(
+                     (
+                       CASE WHEN score = 1 THEN 1 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 0 ELSE null END
+                     )
+                   ) as score1
+                 from
+                   matches m
+                   join users u on m.black_player_id = u.user_id
+                 where
+                   tournament_id = 1
+                 group by
+                   m.white_player_id
+                 union all
+                 select
+                   black_player_id as player_id,
+                   sum(
+                     (
+                       CASE WHEN score = 1 THEN 0 WHEN score = 0 THEN 0.5 WHEN score = -1 THEN 1 ELSE null END
+                     )
+                   ) as score1
+                 from
+                   matches m
+                   join users u on m.white_player_id = u.user_id\s
+                 where
+                   tournament_id = 1
+                 group by
+                   m.black_player_id
+               ) as d
+               right join users uk on d.player_id = uk.user_id
+               right join tournament_roles tr on uk.user_id = tr.user_id
+               left join (
+                 select
+                   user_id,
+                   sum(value) as change_in_rank
+                 from
+                   fide_changes
+                   join matches using(match_id)
+                 where
+                   tournament_id = 1
+                 group by
+                   user_id
+               ) f on f.user_id = d.player_id
+             where tr.tournament_id = 1 and tr.role = 'player'
+             group by
+               uk.user_id,
+               first_name,
+               last_name,
+               start_fide,
+               change_in_rank;
+             
+            """,tournamentId,tournamentId,tournamentId,tournamentId,tournamentId);
 
         ResultSet rs = st.executeQuery(query);
         ResultSetMetaData rsmd = rs.getMetaData();
