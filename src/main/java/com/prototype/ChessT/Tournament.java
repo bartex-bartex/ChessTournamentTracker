@@ -668,13 +668,13 @@ public class Tournament {
       String query = String.format(
               """
                       select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,2) as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide,
-                      (SELECT sum(case when (score = 1 and m2.white_player_id = m.white_player_id) or (score = -1 and m2.black_player_id = m.white_player_id) then 1
-                                 when score = 0 then 0.5
-                                 else 0 end) from matches m2 where tournament_id = %d) as white_score,
-                                 (SELECT sum(case when (score = 1 and m2.white_player_id = m.black_player_id) or (score = -1 and m2.black_player_id = m.black_player_id) then 1
-                                 when score = 0 then 0.5
-                                 else 0 end) from matches m2 where tournament_id = %d) as black_score
-                      from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;""",
+                                            (SELECT sum(case when (m2.score = 1 and m2.white_player_id = m.white_player_id) or (m2.score = -1 and m2.black_player_id = m.white_player_id) then 1
+                                                       when (m2.score = 0 and m.white_player_id in (m2.white_player_id, m2.black_player_id)) then 0.5
+                                                       else 0 end) from matches m2 where tournament_id = %d) as white_score,
+                                                       (SELECT sum(case when (m2.score = 1 and m2.white_player_id = m.black_player_id) or (m2.score = -1 and m2.black_player_id = m.black_player_id) then 1
+                                                       when (m2.score = 0 and m.black_player_id in (m2.white_player_id, m2.black_player_id)) then 0.5
+                                                       else 0 end) from matches m2 where tournament_id = %d) as black_score
+                                            from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;""",
           tournamentId, tournamentId, tournamentId, round);
       ResultSet rs = st.executeQuery(query);
       ResultSetMetaData rsmd = rs.getMetaData();
@@ -825,7 +825,7 @@ player_id,  sum((CASE WHEN                       score = 1 THEN 1 WHEN
 
                                                                 m.black_player_id
 =  u.user_id  where                                                tournament_id   =  %d
-group                 by                                       m.white_player_id   union
+group                 by                                       m.white_player_id   union all
 select  black_player_id  as                                  player_id, sum((CASE WHEN
 score = 1 THEN 0 WHEN score = 0               THEN  0.5 WHEN score = -1 THEN 1 ELSE
 null  END))  as  score1  from  matches  m  join  users u on m.white_player_id =
