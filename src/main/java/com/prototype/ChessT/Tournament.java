@@ -1317,6 +1317,33 @@ public class Tournament {
       }
     }
 
+  @PutMapping("/api/tournament/changeroundsno")
+  public ResponseEntity<String> changeRoundsNo(@CookieValue(value = "auth", defaultValue = "") String auth,
+         @RequestParam(value = "tournamentId") int tournamentId, @RequestParam(value = "newRounds") int newRounds) {
+    int userId = -1;
+    try{
+      userId = User.checkCookie(auth);
+    }
+    catch (Exception e) {
+      return new ResponseEntity<String>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
+    }
+    try {
+      Statement st = ChessTournamentApplication.connection.createStatement();
+      String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;", tournamentId, userId);
+      ResultSet rs = st.executeQuery(query);
+      if (rs.next() && rs.getString(1).equals("admin")) {
+        query = String.format("Update tournaments set rounds = %d where tournament_id = %d", newRounds, tournamentId);
+        st.execute(query);
+        return new ResponseEntity<>("Rounds number successfully updated (CODE 200)", HttpStatus.OK);
+      }
+      return new ResponseEntity<>("No such tournament or no permissions to change rounds number (CODE 409)", HttpStatus.CONFLICT);
+    }
+    catch (Exception e)
+    {
+      return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
     /**
      * Computes fide change based on player ratings, score of the match and K
      * value
