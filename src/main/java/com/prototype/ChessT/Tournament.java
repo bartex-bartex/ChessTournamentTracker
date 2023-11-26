@@ -1,9 +1,6 @@
 package com.prototype.ChessT;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -448,31 +445,44 @@ public class Tournament {
 
     try {
       Statement st = ChessTournamentApplication.connection.createStatement();
-      String query = String.format(
-          "select count(x) from (select * from tournaments where name = '%s') as x",
-          name);
-      ResultSet rs = st.executeQuery(query);
+      /*String query = String.format(
+          "select count(x) from (select * from tournaments where name = '%s') as x;",
+          name);*/
+      String query = "select count(x) from (select * from tournaments where name = ?) as x;";
+      PreparedStatement preparedStatement = ChessTournamentApplication.connection.prepareStatement(query);
+      preparedStatement.setString(1,name);
+      ResultSet rs = preparedStatement.executeQuery();
       rs.next();
       int rowCount = rs.getInt(1);
       if (rowCount == 0) {
-                query =
-                    "select coalesce(max(tournament_id),0) from tournaments";
-                rs = st.executeQuery(query);
-                rs.next();
-                int id = 1 + rs.getInt(1);
-                query = String.format(
-                    "insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) values ('%d','%s','%s','%s','%s','%s','%s','%d','%s')",
-                    id, name, location, organizer, timeControl, startDate,
-                    endDate, rounds, info);
-                st.execute(query);
-                query = String.format(
-                    "insert into tournament_roles (user_id,tournament_id,role) values (%d,%d,'admin')",
-                    userId, id);
-                st.execute(query);
+        query = "select coalesce(max(tournament_id),0) from tournaments";
+        rs = st.executeQuery(query);
+        rs.next();
+        int id = 1 + rs.getInt(1);
+        /*query = String.format(
+            "insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) values ('%d','%s','%s','%s','%s','%s','%s','%d','%s')",
+            id, name, location, organizer, timeControl, startDate,
+            endDate, rounds, info);*/
+        query = String.format("insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) " +
+                                               "values ('%d',?,?,?,?,?,?,'%d',?)", id, rounds);
+        preparedStatement = ChessTournamentApplication.connection.prepareStatement(query);
+        preparedStatement.setString(1,name);
+        preparedStatement.setString(2,location);
+        preparedStatement.setString(3,organizer);
+        preparedStatement.setString(4,timeControl);
+        preparedStatement.setDate(5,ChessTournamentApplication.StringToDate(startDate));
+        preparedStatement.setDate(6,ChessTournamentApplication.StringToDate(endDate));
+        preparedStatement.setString(7,info);
 
-                JSONObject result = new JSONObject();
-                result.put("tournamentId", id);
-                return new ResponseEntity<>(result.toString(), HttpStatus.OK);
+        preparedStatement.executeUpdate();
+        query = String.format(
+            "insert into tournament_roles (user_id,tournament_id,role) values (%d,%d,'admin')",
+            userId, id);
+        st.execute(query);
+
+        JSONObject result = new JSONObject();
+        result.put("tournamentId", id);
+        return new ResponseEntity<>(result.toString(), HttpStatus.OK);
       }
       return new ResponseEntity<>(
           "Tournament with that name already exists (CODE 409)",
@@ -889,7 +899,7 @@ public class Tournament {
         return result;
   }
 
-  /**
+  /*
    * Adds match to selected round of selected tournament. Use at your own risk
    * @param auth authentication cookie
    * @param tournamentId tournament unique id
@@ -902,7 +912,7 @@ public class Tournament {
    * @param gameNotation game notation
    * @return CODE 200 if add match successfully added
    * @deprecated
-   */
+
   @PutMapping("/api/tournament/round/addmatch")
   public ResponseEntity<String>
   addMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
@@ -1028,7 +1038,7 @@ public class Tournament {
         catch (Exception e) {
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
+    }*/
 
     /**
      * Updates score and game notation of provided match
@@ -1075,17 +1085,25 @@ public class Tournament {
                     //case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
                     //        "";
                     case 1 -> // 01 = Chcemy edytować tylko gameNotation
-                            String.format("UPDATE matches SET game_notation = '%s' WHERE match_id = %d;", gameNotation, matchId);
+                            String.format("UPDATE matches SET game_notation = ? WHERE match_id = %d;", gameNotation, matchId);
                     case 2 -> // 10 = Chcemy edytować tylko score
                             String.format("UPDATE matches SET score = %d WHERE match_id = %d;", score, matchId);
                     case 3 -> // 11 = Chcemy edytować i score i gameNotation
-                            String.format("UPDATE matches SET score = %d, game_notation = '%s' WHERE match_id = %d;", score, gameNotation, matchId);
+                            String.format("UPDATE matches SET score = %d, game_notation = ? WHERE match_id = %d;", score, gameNotation, matchId);
                     default ->
                             throw new IllegalStateException("Unexpected value: " + mode);
                 };
                 if (score == 2 && mode >= 2)
                   query += String.format("delete from fide_changes where match_id = %d;",matchId);
-                st.execute(query);
+
+                if(mode == 2){
+                  st.execute(query);
+                }else {
+                  PreparedStatement preparedStatement = ChessTournamentApplication.connection.prepareStatement(query);
+                  preparedStatement.setString(1,gameNotation);
+                  preparedStatement.executeUpdate();
+                }
+
                 if (score == 2 && mode >= 2) {
                   return new ResponseEntity<>("Match successfully updated (CODE 200)", HttpStatus.OK);
                 }
@@ -1129,13 +1147,12 @@ public class Tournament {
     }
 
 
-    /**
+    /*
      * Adds match to selected round of selected tournament. Use at your own risk
      * @param auth authentication cookie
      * @param matchId unique match id
      * @return code 200 if match successfully deleted
      * @deprecated
-     */
     @DeleteMapping("/api/tournament/round/removematch")
     public ResponseEntity<String> removeMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
                                               @RequestParam(value = "matchId") int matchId
@@ -1168,7 +1185,7 @@ public class Tournament {
         {
             return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
+    }*/
 
     /**
      * Starts the tournament if it hasn't already started
