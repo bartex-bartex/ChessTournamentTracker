@@ -463,9 +463,9 @@ public class Tournament {
             "insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) values ('%d','%s','%s','%s','%s','%s','%s','%d','%s')",
             id, name, location, organizer, timeControl, startDate,
             endDate, rounds, info);*/
-        query = String.format("insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) " +
+        String query2 = String.format("insert into tournaments (tournament_id,name,location,organiser,time_control,start_date,end_date,rounds,info) " +
                                                "values ('%d',?,?,?,?,?,?,'%d',?)", id, rounds);
-        preparedStatement = ChessTournamentApplication.connection.prepareStatement(query);
+        preparedStatement = ChessTournamentApplication.connection.prepareStatement(query2);
         preparedStatement.setString(1,name);
         preparedStatement.setString(2,location);
         preparedStatement.setString(3,organizer);

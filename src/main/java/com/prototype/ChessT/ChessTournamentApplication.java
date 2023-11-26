@@ -203,9 +203,10 @@ public class ChessTournamentApplication {
   public ResponseEntity<String> search(
           @PathVariable(value = "name") String name){
       try{
-          Statement st = connection.createStatement();
-          String query = String.format("select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where name like '%%%s%%';",name);
-          ResultSet rs = st.executeQuery(query);
+          String query = "select tournament_id, name, location, time_control, start_date, end_date, tournament_state from tournaments where name like ?;";
+          PreparedStatement ps = connection.prepareStatement(query);
+          ps.setString(1, "%"+name+"%");
+          ResultSet rs = ps.executeQuery();
           ResultSetMetaData rsmd = rs.getMetaData();
           JSONArray result = new JSONArray();
           while (rs.next()) {
