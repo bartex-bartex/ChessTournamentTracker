@@ -1,6 +1,9 @@
 package com.prototype.ChessT;
 
 import java.sql.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.boot.SpringApplication;
@@ -231,5 +234,9 @@ public class ChessTournamentApplication {
     if (!adult && fide < 2300)
                         return 40;
     return 20;
+  }
+
+  public static Date StringToDate(String dateString) {
+      return java.sql.Date.valueOf(dateString);
   }
 }
