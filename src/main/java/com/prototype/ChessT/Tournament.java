@@ -1327,6 +1327,8 @@ public class Tournament {
     catch (Exception e) {
       return new ResponseEntity<String>("No or expired authorization token (CODE 401)", HttpStatus.UNAUTHORIZED);
     }
+    if(newRounds<1)
+      return new ResponseEntity<>("Invalid rounds number (CODE 409)", HttpStatus.CONFLICT);
     try {
       Statement st = ChessTournamentApplication.connection.createStatement();
       String query = String.format("select role from tournament_roles where tournament_id = %d and user_id = %d;", tournamentId, userId);
