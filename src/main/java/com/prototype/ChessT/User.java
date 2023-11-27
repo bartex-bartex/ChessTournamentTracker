@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.security.auth.login.CredentialExpiredException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -73,7 +74,7 @@ public class User {
      * Finds all data about any user (except email and hashed password) for logged-in users only
      * @param auth Cookie used to authenticate logged-in users
      * @param userId Id of a user the data is about
-     * @return JSON structured string  with username, first_name, last_name, sex, date_of_birth and fide
+     * @return JSON structured string with username, first_name, last_name, sex, date_of_birth and fide
      */
     @GetMapping("/api/user/account/{userId}")
     public ResponseEntity<String> account(@CookieValue(value = "auth", defaultValue = "") String auth,
@@ -106,7 +107,7 @@ public class User {
     /**
      * Validates authentication cookie
      * @param auth Cookie used to authenticate logged-in users
-     * @return JSON structured string  with values: valid (boolean), user_id (of logged_in user)
+     * @return JSON structured string with values: valid (boolean), user_id (of logged_in user)
      */
     @GetMapping("/api/validate-session")
     public ResponseEntity<String> validate(@CookieValue(value = "auth", defaultValue = "") String auth){
@@ -147,7 +148,7 @@ public class User {
             preparedStatement.setString(2,hashPassword(password, username));
             ResultSet rs = preparedStatement.executeQuery();
             if (!rs.next()) {
-                return new ResponseEntity<>("Username or password incorrect (CODE 404)", HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>("Username or password incorrect (CODE 401)", HttpStatus.UNAUTHORIZED);
             }
             addAuthCookie(response, rs.getInt(1));
 
@@ -159,7 +160,7 @@ public class User {
     }
 
     /**
-     * Log out currently loged-in user
+     * Log out currently logged-in user
      * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-out)
      * @return CODE 200 if successfully logged out
      */
@@ -167,7 +168,7 @@ public class User {
     public ResponseEntity<String> logout(@CookieValue(value = "auth", defaultValue = "") String auth) {
         try {
             if (checkFalseCookie(auth)) {
-                return new ResponseEntity<>("No user to log out (CODE 409)", HttpStatus.CONFLICT);
+                return new ResponseEntity<>("No user to log out (CODE 401)", HttpStatus.UNAUTHORIZED);
             }
             String query = "delete from sessions where session_id = ?";
             PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
@@ -184,7 +185,7 @@ public class User {
      * Validates data to register user, and if everything is valid registers user in database
      * @param auth Cookie used to authenticate logged-in users (to check is user isn't already logged-in)
      * @param username username of new user
-     * @param password password of new user (t will be hashed, then saved to database)
+     * @param password password of new user (it will be hashed, then saved to database)
      * @param password2 password for typos elimination
      * @param mail mail of new user
      * @param name first name of new user
@@ -193,8 +194,9 @@ public class User {
      * @param date birth date of new user
      * @param fide declared by new user, his fide
      * @param response used to attach cookie to header of response
-     * @return CODE 200 if successfully logged in
+     * @return CODE 200 if successfully registered in
      * @see User#addAuthCookie
+     * @see User#hashPassword(String, String)
      */
     @PostMapping("/api/user/register")
     public ResponseEntity<String> register(@CookieValue(value = "auth",defaultValue = "") String auth,
@@ -217,7 +219,7 @@ public class User {
                 return new ResponseEntity<>("Password is invalid (CODE 400)", HttpStatus.BAD_REQUEST);
 
             if(!password.equals(password2))
-                return new ResponseEntity<>("Passwords are not equal (CODE 400)", HttpStatus.CONFLICT);
+                return new ResponseEntity<>("Passwords are not equal (CODE 409)", HttpStatus.CONFLICT);
 
             if(!validate(regexMailValidationPattern,mail))
                 return new ResponseEntity<>("Mail is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
@@ -235,10 +237,8 @@ public class User {
                 return new ResponseEntity<>("Date is invalid (CODE 400)", HttpStatus.BAD_REQUEST);
             }
 
-
             if(fide < 0)
                 return new ResponseEntity<>("Fide is invalid (CODE 400)",HttpStatus.BAD_REQUEST);
-
 
             Statement st = ChessTournamentApplication.connection.createStatement();
             String query ="select count(x) from (select * from users where username = ? or mail = ?) as x";
@@ -276,9 +276,16 @@ public class User {
             return new ResponseEntity<>("User with this username or email already exists (CODE 409)", HttpStatus.CONFLICT);
         }
         catch(Exception e){
-            return new ResponseEntity<>("Internal server error (CODE 500)" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Finds all tournaments created by logged-in user
+     * @param auth Cookie used to check if any user is logged-in and to find user's id
+     * @return JSON structured string, array of tournaments, containing role (admin or player of this tournament),
+     *      name, location, time_control, start_date, end_date, tournaments_state (0 if waiting for start, 1 if going on, 2 if ended)
+     */
 
     @GetMapping("/api/user/my-tournaments")
     public ResponseEntity<String> myTournaments(
@@ -310,7 +317,8 @@ public class User {
     }
 
     /**
-     * Generates strings with length of 32 for use as authentication token
+     * Generates strings with length of 32 for use as authentication tokens
+     * @return string, 32 characters long
      */
     public String randomString32Char() {
         int leftLimit = 48; // numeral '0'
@@ -358,10 +366,11 @@ public class User {
     /**
      * Used widely to verify user session authentication cookie
      * @param auth cookie to validate
-     * @return userId of owner of session authentication
-     * @throws Exception if auth is older than 30 mins or doesn't exist at all
+     * @return userId of owner of session authenticated
+     * @throws CredentialExpiredException if auth is older than 30 mins or doesn't exist at all
+     * @throws SQLException if something goes horribly wrong
      */
-    public static int checkCookie(String auth) throws Exception {
+    public static int checkCookie(String auth) throws CredentialExpiredException, SQLException {
         String query = "Select user_id from sessions where session_id = ? and date > now() - interval '30' minute;";
         PreparedStatement ps = ChessTournamentApplication.connection.prepareStatement(query);
         ps.setString(1, auth);
@@ -374,13 +383,13 @@ public class User {
             ps.executeUpdate();
             return temp;
         }
-        throw new Exception("No such active auth token found");
+        throw new CredentialExpiredException("No such active auth token found");
     }
 
     /**
      * Check if no authentication token was attached to header (checks if no one is logged-in)
      * @param auth Cookie to check if valid
-     * @return true if no user session authentication valid
+     * @return true if no user session authentication valid, false otherwise
      * @throws SQLException if something goes horribly wrong
      * @see User#login(String, String, String, HttpServletResponse)
      * @see User#register(String, String, String, String, String, String, String, String, String, int, HttpServletResponse)
@@ -397,10 +406,10 @@ public class User {
     }
 
     /**
-     * Hashes passwor for safety reasons
+     * Hashes password for safety reasons, uses SHA3-256 algorithm
      * @param password password to hash
      * @param username used as "salt" during hashing
-     * @return hashed password
+     * @return string, hashed password
      * @throws NoSuchAlgorithmException if invalid algorithm for hashing provided by developer
      */
     public String hashPassword(String password, String username) throws NoSuchAlgorithmException {

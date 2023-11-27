@@ -30,8 +30,7 @@ public class ChessTournamentApplication {
 
   /**
    * Main function called at the start up of a server
-   * Runs spring application, establishes connection with database and clears
-   * all session tokens
+   * Runs spring application, establishes connection with database
    * @param args
    */
   public static void main(String[] args) {
@@ -70,7 +69,7 @@ public class ChessTournamentApplication {
 
   /**
    * Function called every month, on 0:10 of first day of that month
-   * Sums all fide changes cause by playing in tournaments that have ended
+   * Sums all fide changes caused by playing in tournaments that have ended
    * during previous month (the one that ended 10 min earlier), then updates K
    * values for all players
    */
@@ -78,7 +77,7 @@ public class ChessTournamentApplication {
   public void fideUpdate() {
     try {
       Statement st = connection.createStatement();
-                        String query = String.format("""
+                        String query = """
 					UPDATE users
 					SET fide = fide+coalesce((SELECT sum(fc.value) from fide_changes fc
 					join matches m using(match_id) join tournaments t using(tournament_id)
@@ -90,7 +89,7 @@ public class ChessTournamentApplication {
 							when fide > 2300 or k=20 then 20
 							when date_of_birth < now() - interval '18' year then 20
 							else 40 end);
-								""");
+								""";
 			st.execute(query);
 
     } catch (Exception e) {
@@ -99,7 +98,7 @@ public class ChessTournamentApplication {
   }
 
   /**
-   * Finds tournaments in data base, that match search params and puts result
+   * Finds tournaments in database, that match search params and puts result
    * into JSON Array, which is combined with max page number into JSON Object
    * @param mode defaults to -1, describes the state of tournaments user is
    *     looking for
@@ -107,11 +106,11 @@ public class ChessTournamentApplication {
    * not ended, 2 tournaments ended, -1 find tournaments that ended during last
    * week, all tournaments that are ongoing and those that are going to begin
    * during next two months)
-   * @param page number of page to show (relevant if mode different from -1)
-   * @param page_size number of page to show (relevant if mode different from
-   *     -1)
+   * @param page number of page to show (relevant if mode different from -1, defaults to 1 (first page))
+   * @param page_size number of tournaments on page (relevant if mode different from
+   *     -1, defaults to 100)
    * @return JSON structured string containing number of possible to see pages
-   *     (that are not empty, also 0 if mode equals -1)
+   *     (that are not empty, 0 if mode equals -1)
    * and array named "tournaments" of results
    */
 
@@ -195,9 +194,9 @@ public class ChessTournamentApplication {
   }
 
     /**
-     * Returns list of tournaments that matches provided text
-     * @param name
-     * @return JSON structured string that contains list of tournaments that matches provided name
+     * Returns list of tournaments that contain provided text
+     * @param name text that must be contained by returned tournament's names
+     * @return JSON structured string, array of tournaments that contain provided name
      */
   @GetMapping("/api/search/{name}")
   public ResponseEntity<String> search(
@@ -230,12 +229,17 @@ public class ChessTournamentApplication {
    */
   public static int kValue(int fide, boolean adult) {
     if (fide > 2400)
-                        return 10;
+        return 10;
     if (!adult && fide < 2300)
-                        return 40;
+        return 40;
     return 20;
   }
 
+    /**
+     * Computes Date used in prepared statements
+     * @param dateString string with date to be converted to Date object
+     * @return Date object ready to be used in prepared statement
+     */
   public static Date StringToDate(String dateString) {
       return java.sql.Date.valueOf(dateString);
   }
