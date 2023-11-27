@@ -677,14 +677,48 @@ public class Tournament {
       Statement st = ChessTournamentApplication.connection.createStatement();
       String query = String.format(
               """
-                      select m.match_id, m.white_player_id, m.black_player_id, coalesce(m.score,2) as score, m.round, m.table, coalesce(m.game_notation,'') as game_notation, u1.first_name as white_first_name, u1.last_name as white_last_name, u1.fide as white_fide, u2.first_name as black_first_name, u2.last_name as black_last_name, u2.fide as black_fide,
-                                            (SELECT sum(case when (m2.score = 1 and m2.white_player_id = m.white_player_id) or (m2.score = -1 and m2.black_player_id = m.white_player_id) then 1
-                                                       when (m2.score = 0 and m.white_player_id in (m2.white_player_id, m2.black_player_id)) then 0.5
-                                                       else 0 end) from matches m2 where tournament_id = %d) as white_score,
-                                                       (SELECT sum(case when (m2.score = 1 and m2.white_player_id = m.black_player_id) or (m2.score = -1 and m2.black_player_id = m.black_player_id) then 1
-                                                       when (m2.score = 0 and m.black_player_id in (m2.white_player_id, m2.black_player_id)) then 0.5
-                                                       else 0 end) from matches m2 where tournament_id = %d) as black_score
-                                            from matches m join users u1 on m.white_player_id = u1.user_id join users u2 on m.black_player_id = u2.user_id where m.tournament_id = %d and m.round = %d;""",
+                      SELECT m.match_id,
+                                    m.white_player_id,
+                                    m.black_player_id,
+                                    coalesce(m.score, 2) AS score,
+                                    m.round,
+                                    m.table,
+                                    coalesce(m.game_notation, '') AS game_notation,
+                                    u1.first_name AS white_first_name,
+                                    u1.last_name AS white_last_name,
+                                    u1.fide AS white_fide,
+                                    u2.first_name AS black_first_name,
+                                    u2.last_name AS black_last_name,
+                                    u2.fide AS black_fide,
+                             
+                               (SELECT sum(CASE
+                                               WHEN (m2.score = 1
+                                                     AND m2.white_player_id = m.white_player_id)
+                                                    OR (m2.score = -1
+                                                        AND m2.black_player_id = m.white_player_id) THEN 1
+                                               WHEN (m2.score = 0
+                                                     AND m.white_player_id in (m2.white_player_id, m2.black_player_id)) THEN 0.5
+                                               ELSE 0
+                                           END)
+                                FROM matches m2
+                                WHERE tournament_id = %d)+(select (CASE when tr1.bye = 0 then 0 else 1 end) from tournament_roles tr1 where tr1.user_id = m.white_player_id and tr1.tournament_id = m.tournament_id) AS white_score,
+                             
+                               (SELECT sum(CASE
+                                               WHEN (m2.score = 1
+                                                     AND m2.white_player_id = m.black_player_id)
+                                                    OR (m2.score = -1
+                                                        AND m2.black_player_id = m.black_player_id) THEN 1
+                                               WHEN (m2.score = 0
+                                                     AND m.black_player_id in (m2.white_player_id, m2.black_player_id)) THEN 0.5
+                                               ELSE 0
+                                           END)
+                                FROM matches m2
+                                WHERE tournament_id = %d)+(select (CASE when tr2.bye = 0 then 0 else 1 end) from tournament_roles tr2 where tr2.user_id = m.black_player_id and tr2.tournament_id = m.tournament_id) AS black_score
+                             FROM matches m
+                             JOIN users u1 ON m.white_player_id = u1.user_id
+                             JOIN users u2 ON m.black_player_id = u2.user_id
+                             WHERE m.tournament_id = %d
+                               AND m.round = %d;""",
           tournamentId, tournamentId, tournamentId, round);
       ResultSet rs = st.executeQuery(query);
       ResultSetMetaData rsmd = rs.getMetaData();
@@ -828,7 +862,7 @@ public class Tournament {
                    tournament_roles tr2
                  where
                    tr2.user_id = uk.user_id
-                   AND tournament_id = 1
+                   AND tournament_id = %d
                ) as score
              from
                (
@@ -843,7 +877,7 @@ public class Tournament {
                    matches m
                    join users u on m.black_player_id = u.user_id
                  where
-                   tournament_id = 1
+                   tournament_id = %d
                  group by
                    m.white_player_id
                  union all
@@ -858,7 +892,7 @@ public class Tournament {
                    matches m
                    join users u on m.white_player_id = u.user_id\s
                  where
-                   tournament_id = 1
+                   tournament_id = %d
                  group by
                    m.black_player_id
                ) as d
@@ -872,11 +906,11 @@ public class Tournament {
                    fide_changes
                    join matches using(match_id)
                  where
-                   tournament_id = 1
+                   tournament_id = %d
                  group by
                    user_id
                ) f on f.user_id = d.player_id
-             where tr.tournament_id = 1 and tr.role = 'player'
+             where tr.tournament_id = %d and tr.role = 'player'
              group by
                uk.user_id,
                first_name,
@@ -1115,7 +1149,7 @@ public class Tournament {
 							SELECT m.white_player_id, tr.start_fide, tr.k from matches m
 							join tournament_roles tr on m.white_player_id = tr.user_id and m.tournament_id = tr.tournament_id
 							where match_id = %d
-							union
+							union all
 							SELECT m.black_player_id, tr.start_fide, tr.k from matches m
 							join tournament_roles tr on m.black_player_id = tr.user_id and m.tournament_id = tr.tournament_id
 							where match_id = %d;""", matchId, matchId);
