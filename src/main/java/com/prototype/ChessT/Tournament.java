@@ -377,7 +377,7 @@ public class Tournament {
   }
 
   /**
-   * Creates tournament and give admin role for current user
+   * Validates provided data and if valid creates tournament and gives admin role for current user
    * @param auth authentication cookie
    * @param name tournament name
    * @param location tournament location
@@ -498,7 +498,7 @@ public class Tournament {
    * Allows current user to join provided tournament
    * @param auth authentication cookie
    * @param tournamentId tournament unique id
-   * @return CODE 200 if user successfully joined
+   * @return CODE 200 if user successfully joined tournament
    */
   @PostMapping("/api/tournament/join/{tournamentId}")
   public ResponseEntity<String>
@@ -519,7 +519,7 @@ public class Tournament {
           tournamentId);
       ResultSet rs = st.executeQuery(query);
       if (!rs.next()) {
-                return new ResponseEntity<>("Ivalid tournament id (CODE 409)",
+                return new ResponseEntity<>("Invalid tournament id (CODE 409)",
                                             HttpStatus.CONFLICT);
       }
       if (rs.getInt(1) > 0) {
@@ -541,7 +541,7 @@ public class Tournament {
           userId, tournamentId);
       st.execute(query);
       return new ResponseEntity<>(
-          "Joined to the tournament successfully (CODE 200)", HttpStatus.OK);
+          "Joined the tournament successfully (CODE 200)", HttpStatus.OK);
     } catch (Exception E) {
       return new ResponseEntity<>("Internal server error (CODE 500)",
                                   HttpStatus.INTERNAL_SERVER_ERROR);
@@ -551,9 +551,13 @@ public class Tournament {
   /**
    * Returns general info of the tournament
    * @param tournamentId unique tournament id
-   * @return JSON structured string  with general info about tournament and
-   *     result of players if tournament already started
-   * or is finished or general info about players that joined the tournament
+   * @return JSON structured string containing tournament_id, name, location, organiser, time_control, start_date,
+   *     end_date, rounds (total number of rounds planned by organiser), info, tournament_state (0 not started yet, 1 - going on, 2 - ended), is_admin(1 - is admin, 0 not an admin),
+   *     if tournament_state is 0 (tournament not started) contains array of players participating,
+   *        user_id, first_name, last_name, username, fide for each
+   *     if tournament_state is greater than 0 (tournament started or ended) contains array of players with data
+   *        about their performance, first_name, user_id, start_fide, last_name, change_in_fide, score
+   * @see Tournament#results(int)
    */
   @GetMapping("/api/tournament/{tournamentId}")
   public ResponseEntity<String>
@@ -629,10 +633,10 @@ public class Tournament {
 
   /**
    * Returns general info about match
-   * @param matchId
+   * @param matchId id of match the data will be about
    * @return JSON structured string containing match_id, white_player_id,
    *     black_player_id, score (1 - white player win, 0 - tie,
-   * -1 - black player win other values = nodata), table, game_notation.
+   * -1 - black player win other values - nodata), table, game_notation.
    */
   @GetMapping("/api/tournament/match/{matchId}")
   public ResponseEntity<String> getMatch(@PathVariable int matchId) {
@@ -664,10 +668,10 @@ public class Tournament {
    * Returns general info about round of tournament
    * @param tournamentId unique tournament id
    * @param round round number
-   * @return JSON structured string containing list of matches, single match
+   * @return JSON structured string containing array of matches, single match
    *     contains match_id, white_player_id, black_player_id,
-   * score, round, table, game_notation, white_first_name, white_last_name,
-   * black_first_name, black_last_name, white_fide, black_fide
+   *     score, round, table, game_notation, white_first_name, white_last_name,
+   *     black_first_name, black_last_name, white_fide, black_fide
    */
   @GetMapping("/api/tournament/round")
   public ResponseEntity<String>
@@ -714,10 +718,10 @@ public class Tournament {
    * @param userId unique user id
    * @return JSON structured string containing user_id, username, first_name,
    *     last_name, start_fide, tournament_id, rank_change,
-   * opponents (list of opponents containing tournament_id, match_id, user_id,
-   * first_name, last_name, score, color, round, start_fide, table), bye (0 - no
-   * bye given, other positive integer round which bye was given), sum (score in
-   * whole tournament), avg_fide (average FIDE rating of opponents)
+   *     opponents (array of opponents containing tournament_id, match_id, user_id,
+   *     first_name, last_name, score, color, round, start_fide, table), bye (0 - no
+   *     bye given, other positive integer round which bye was given), sum (score in
+   *     whole tournament), avg_fide (average FIDE rating of opponents)
    */
   @GetMapping("/api/tournament/player")
   public ResponseEntity<String>
@@ -807,12 +811,12 @@ public class Tournament {
 
   /**
    * Returns JSONObject with results of provided tournament
-   * @param tournamentId
-   * @return JSONObject containing results
-   * @throws SQLException
+   * @param  tournamentId id of tournament, the data will be about
+   * @return JSONArray of players info and their performance in tournament indicated by tournamentId,
+   *    first_name, user_id, start_fide, last_name, change_in_fide, score
+   * @throws SQLException indicates something went horribly wrong
    */
-  public JSONArray results(@PathVariable(value = "tournamentId")
-                           int tournamentId) throws SQLException {
+  public JSONArray results(int tournamentId) throws SQLException {
     Statement st = ChessTournamentApplication.connection.createStatement();
     String query = String.format("""
              select
@@ -1042,10 +1046,10 @@ public class Tournament {
 
     /**
      * Updates score and game notation of provided match
-     * @param auth authorisation cookie
-     * @param matchId unique match  id
-     * @param score score (1 - white player win, 0 - tie, -1 - black player win, 2 - deletes match score and associated fide changes, other values = nodata)
-     * @param gameNotation game notation
+     * @param auth authorisation cookie, to check if user is admin of tournament the match was played in
+     * @param matchId unique match id
+     * @param score score (1 - white player win, 0 - tie, -1 - black player win, 2 - deletes match score and associated fide changes, other values - no change, defaults to 2)
+     * @param gameNotation game notation (if empty no change, defaults to epty)
      * @return 200 if match successfully updated
      */
     @PatchMapping("/api/tournament/round/updatematch")
@@ -1054,11 +1058,6 @@ public class Tournament {
                                               @RequestParam(value = "score", defaultValue = "2") int score,
                                               @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
     ){
-        // UWAGA UWAGA
-        // Panowie, proszę o zaktualizowanie tego endpointa w taki sposób by dało się zerować (ustawiać na 2) wynik meczu.
-        // Zerowanie gameNotation (ustawianie do pustego stringa) raczej nie będzie potrzebne.
-        // Z tego co tutaj jest napisane wynika, że wyzerowanie wyniku nie usunie fide changes z bazy danych.
-        // Fajnie jednak jeśli dałoby się usunąć wcześniej wpisany wynik jeśli ktoś pomyli się i wpisze go w złym wierszu np. parze osób, których mecz jeszcze nie został oceniony i nie posiada wyniku.
         //if(score <-1 || score >3){
         //    return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
         //}
@@ -1076,7 +1075,6 @@ public class Tournament {
             String query = String.format("select role from tournament_roles join matches using(tournament_id) where match_id = %d and user_id = %d;",matchId,userId);
             ResultSet rs = st.executeQuery(query);
             if (rs.next() && rs.getString(1).equals("admin")){
-                // matchId = rs.getInt(1); Po co to, skoro matchId mamy z requesta???
                 // Najpierw czy chcemy edytować score?
                 int mode = (score >= -1 && score <= 2 ? 2 : 0); // 00 lub 10
                           // Czy chcemy edytować też gameNotation?
@@ -1190,7 +1188,7 @@ public class Tournament {
     /**
      * Starts the tournament if it hasn't already started
      * @param tournamentId unique tournament id
-     * @param auth authentication cookie
+     * @param auth authentication cookie used to determine if user is admin of the tournament
      * @return CODE 200 if successfully started
      */
     @PatchMapping("/api/tournament/start/{tournamentId}")
@@ -1272,7 +1270,7 @@ public class Tournament {
     /**
      * Ends the tournament if it hasn't already ended
      * @param tournamentId unique tournament id
-     * @param auth authentication cookie
+     * @param auth authentication cookie used to determine if user is admin of the tournament
      * @return CODE 200 if successfully started
      */
     @
@@ -1334,7 +1332,15 @@ public class Tournament {
       }
     }
 
-  @PutMapping("/api/tournament/changeroundsno")
+  /**
+   * Changes number of rounds planned for the tournament (useful if number rounds is to big to start tournament)
+   * @param auth Cookie used to determine if user is admin of the tournament
+   * @param tournamentId unique id of tournament user wants to edit
+   * @param newRounds new number of planned rounds
+   * @return CODE 200 if successfully changed round number
+   */
+
+  @PutMapping("/api/tournament/change-rounds-no")
   public ResponseEntity<String> changeRoundsNo(@CookieValue(value = "auth", defaultValue = "") String auth,
          @RequestParam(value = "tournamentId") int tournamentId, @RequestParam(value = "newRounds") int newRounds) {
     int userId = -1;
