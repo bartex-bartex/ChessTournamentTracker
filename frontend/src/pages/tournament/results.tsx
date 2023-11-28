@@ -70,12 +70,12 @@ export default function TournamentResults() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tournamentInfo.player_data.map((data, i) => (
+                    {tournamentInfo.player_data.slice().sort((a, b) => parseFloat(b.score || "0") - parseFloat(a.score || "0")).map((data, i) => (
                       <tr key={data.player_id}>
                         <td>{i + 1}</td>
                         <td>{data.first_name} {data.last_name}</td>
                         <td>{data.start_fide}</td>
-                        <td>{data.score || 0}</td>
+                        <td>{parseFloat(data.score || "0").toFixed(1)}</td>
                       </tr>
                     ))}
                   </tbody>

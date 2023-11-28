@@ -44,7 +44,7 @@ services:
     working_dir: /app
 
   # Development
-  dev:
+  backend:
     command: sh -c "dos2unix ./gradlew && ./gradlew runDev"
     depends_on:
       - frontend

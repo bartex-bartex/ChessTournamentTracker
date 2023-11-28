@@ -71,70 +71,86 @@ export default function Tournament() {
             </tbody>
           </table>
         </div>
-        {context.signedInUser && (!info || info.is_admin === "0" ? (
-          info && info.tournament_state === "0" && info.players.filter((p: any) => p.username === context.signedInUser).length === 0 ? <Button text="Join Tournament" onClick={async () => {
-            // Send post to /api/tournament/join/{tournamentId}
-            // if success, navigate to /tournament/{tournamentId}/participants
-            const response = await fetch('/api/tournament/join/' + id, {
-              method: 'POST',
-            });
+        {info && (
+          context.signedInUser ? (info.is_admin === "0" ? (
+            (info.players || info.player_data).filter((p: any) => p.username === context.signedInUser).length === 0 ? (
+              // user is not participating
+              info.tournament_state === "0" ?
+                // tournament has not started
+                <Button text="Join Tournament" onClick={async () => {
+                  // Send post to /api/tournament/join/{tournamentId}
+                  // if success, navigate to /tournament/{tournamentId}/participants
+                  const response = await fetch('/api/tournament/join/' + id, {
+                    method: 'POST',
+                  });
 
-            if (response.ok) {
-              navigate('/tournament/' + id + '/participants');
-            } else {
-              alert('Failed to join tournament: ' + await response.text());
-            }
-          }} /> : "You participate."
-        ) : (info && !info.players ? (
-          info && info.tournament_state !== "2" ? <>
-            <Button text="End Tournament" onClick={async () => {
+                  if (response.ok) {
+                    navigate('/tournament/' + id + '/participants');
+                  } else {
+                    alert('Failed to join tournament: ' + await response.text());
+                  }
+                }} /> :
+                (info.tournament_state === "1" ? "Tournament has started. You do not participate." : "Tournament has ended. You did not participate.")
+            ) : (
+              // user is participating
+              info.tournament_state === "0" || info.tournament_state === "1" ?
+                // tournament has not started or is in progress
+                "You participate." :
+                // tournament has ended
+                "You participated."
+            )
+          ) : (!info.players ? (
+            info.tournament_state !== "2" ? <>
+              <Button text="End Tournament" onClick={async () => {
+                // Send post to /api/tournament/start/{tournamentId}
+                // on success reload tournament info
+                const response = await fetch('/api/tournament/end/' + id, {
+                  method: 'PATCH',
+                });
+
+                if (response.ok) {
+                  alert('Tournament ended.');
+                  loadTournamentInfo();
+                } else {
+                  alert('Failed to end the tournament: ' + await response.text());
+                }
+              }} />
+              {info.rounds_generated < info.rounds && <Button className={styles["begin-next-round"]} text="Begin Next Round" onClick={async () => {
+                // Send post to /api/tournament/generateRoundPairings
+                // on success reload tournament info
+                const response = await fetch('/api/tournament/generateRoundPairings?' + new URLSearchParams([
+                  ["tournamentId", id!],
+                  ["round", info.rounds_generated + 1],
+                ]), {
+                  method: 'PUT',
+                });
+
+                if (response.ok) {
+                  alert('Next round added successfully.');
+                  loadTournamentInfo();
+                } else {
+                  alert('Failed to add new round: ' + await response.text());
+                }
+              }} />}
+            </> : "Tournament has ended."
+          ) : (
+            info.players.length > 0 && <Button text="Start Tournament" onClick={async () => {
               // Send post to /api/tournament/start/{tournamentId}
               // on success reload tournament info
-              const response = await fetch('/api/tournament/end/' + id, {
+              const response = await fetch('/api/tournament/start/' + id, {
                 method: 'PATCH',
               });
 
               if (response.ok) {
-                alert('Tournament ended.');
+                alert('Tournament started.');
                 loadTournamentInfo();
               } else {
-                alert('Failed to end the tournament: ' + await response.text());
+                alert('Failed to start tournament: ' + await response.text());
               }
             }} />
-            {info && info.rounds_generated < info.rounds && <Button className={styles["begin-next-round"]} text="Begin Next Round" onClick={async () => {
-              // Send post to /api/tournament/generateRoundPairings
-              // on success reload tournament info
-              const response = await fetch('/api/tournament/generateRoundPairings?' + new URLSearchParams([
-                ["tournamentId", id!],
-                ["round", info.rounds_generated + 1],
-              ]), {
-                method: 'PUT',
-              });
-
-              if (response.ok) {
-                alert('Next round added successfully.');
-                loadTournamentInfo();
-              } else {
-                alert('Failed to add new round: ' + await response.text());
-              }
-            }} />}
-          </> : "Tournament has ended."
-        ) : (
-          info && info.players.length > 0 && <Button text="Start Tournament" onClick={async () => {
-            // Send post to /api/tournament/start/{tournamentId}
-            // on success reload tournament info
-            const response = await fetch('/api/tournament/start/' + id, {
-              method: 'PATCH',
-            });
-
-            if (response.ok) {
-              alert('Tournament started.');
-              loadTournamentInfo();
-            } else {
-              alert('Failed to start tournament: ' + await response.text());
-            }
-          }} />
-        )))}
+          ))) : (
+            info.tournament_state === "0" ? "Tournament has not yet started. Sign in to join!" : (info.tournament_state === "1" ? "Tournament is in progress." : "Tournament has ended."))
+        )}
       </div>
     </div>
   );

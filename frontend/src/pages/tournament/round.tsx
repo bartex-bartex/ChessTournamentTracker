@@ -18,6 +18,8 @@ interface TournamentMatch {
   white_fide: string;
   black_fide: string;
   table: string;
+  white_score: string;
+  black_score: string;
 }
 
 export default function TournamentRound() {
@@ -88,16 +90,11 @@ export default function TournamentRound() {
                     {roundInfo.map((data, i) => (
                       <tr key={data.match_id}>
                         <td>{i + 1}</td>
-                        <td>{tournamentInfo.player_data.find((player: any) => player.player_id === data.white_player_id)?.score || 0}</td>
+                        <td>{parseFloat(data.white_score || "0").toFixed(1)}</td>
                         <td>{data.white_first_name} {data.white_last_name}</td>
                         <td>
-                          {tournamentInfo.is_admin == "1" ? (
+                          {tournamentInfo.is_admin == "1" && tournamentInfo.tournament_state == "1" ? (
                             <select name="result" id="result" defaultValue={data.score} onChange={async e => {
-                              // PatchMapping("/api/tournament/round/updatematch")
-                              // public ResponseEntity<String> updateMatch(@CookieValue(value = "auth", defaultValue = "") String auth,
-                              //                                           @RequestParam(value = "matchId") int matchId,
-                              //                                           @RequestParam(value = "score", defaultValue = "2") int score,
-                              //                                           @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
                               const selection = e.target.value;
                               const result = await fetch("/api/tournament/round/updatematch?" + new URLSearchParams([
                                 ['matchId', data.match_id],
@@ -124,7 +121,7 @@ export default function TournamentRound() {
                           )}
                         </td>
                         <td>{data.black_first_name} {data.black_last_name}</td>
-                        <td>{tournamentInfo.player_data.find((player: any) => player.player_id === data.black_player_id)?.score || 0}</td>
+                        <td>{parseFloat(data.black_score || "0").toFixed(1)}</td>
                       </tr>
                     ))}
                   </tbody>

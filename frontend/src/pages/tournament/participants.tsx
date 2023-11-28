@@ -91,7 +91,7 @@ export default function TournamentParticipants() {
                 </thead>
                 <tbody>
                   {/* user_id, first_name, last_name, username, fide */}
-                  {tournamentInfo.player_data.map((player, i) => (
+                  {tournamentInfo.player_data.slice().sort((a, b) => parseFloat(b.start_fide || "0") - parseFloat(a.start_fide || "0")).map((player, i) => (
                     <tr key={i}>
                       <td>{i + 1}</td>
                       <td>{`${player.first_name} ${player.last_name}`}</td>

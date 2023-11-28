@@ -19,9 +19,24 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.File;
 import java.net.*;
 
+/**
+ * This class represents the Frontend controller for the Chess Tournament Tracker application.
+ * It handles requests related to serving the frontend content.
+ */
 @Controller
 @CrossOrigin("*")
 public class Frontend {
+    /**
+     * This method serves the frontend content for the Chess Tournament Tracker application.
+     * It handles GET requests for any path and forwards the request to the frontend server at localhost:3000.
+     * If the path begins with "/api", it returns a 404 NOT_FOUND response.
+     * But note that valid /api requests are handled by other controllers.
+     * The method retrieves the content from the frontend server and determines the content type based on the file extension.
+     * It then adds the appropriate content type header and returns the content as a ResponseEntity with the appropriate status code.
+     * If an exception occurs during the process, it returns a 500 INTERNAL_SERVER_ERROR response.
+     *
+     * @return ResponseEntity<Resource> - The response entity containing the frontend content.
+     */
     @GetMapping("/**")
     public ResponseEntity<Resource> serveFrontend() {
         ServletUriComponentsBuilder builder = ServletUriComponentsBuilder.fromCurrentRequest();
