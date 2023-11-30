@@ -27,7 +27,7 @@ export default function TournamentRound() {
   const [roundInfo, setRoundInfo] = useState<TournamentMatch[]>([]);
   const [tournamentInfo, setTournamentInfo] = useState<any>(null);
 
-  const fetchRoundData = useCallback(async () => {
+  const fetchRoundData = useCallback(async (reload: boolean) => {
     try {
       const response = await fetch("/api/tournament/round?" + new URLSearchParams([
         ['tournamentId', tournamentId!],
@@ -38,7 +38,24 @@ export default function TournamentRound() {
         return;
       }
       const body: TournamentMatch[] = await response.json();
-      setRoundInfo(body);
+
+      // Match body order to previous roundInfo order
+      // We're guaranteed to have the same number of matches
+      // We can use match_id as a key to match two arrays
+      if (roundInfo.length !== 0 && !reload) {
+        const bodySorted: TournamentMatch[] = [];
+        for (const match of roundInfo) {
+          for (const newMatch of body) {
+            if (match.match_id === newMatch.match_id) {
+              bodySorted.push(newMatch);
+              break;
+            }
+          }
+        }
+        setRoundInfo(bodySorted);
+      } else {
+        setRoundInfo(body);
+      }
     } catch (err) {
       console.error('Error fetching round data:', err);
       setRoundInfo([]);
@@ -61,7 +78,7 @@ export default function TournamentRound() {
   }, [tournamentId]);
 
   useEffect(() => {
-    fetchRoundData();
+    fetchRoundData(true);
     fetchTournamentData();
   }, [tournamentId, round]);
 
@@ -108,7 +125,7 @@ export default function TournamentRound() {
                                 alert("Failed to update match: " + await result.text());
                               }
 
-                              fetchRoundData();
+                              fetchRoundData(false);
                               fetchTournamentData();
                             }}>
                               <option value="1">1-0</option>

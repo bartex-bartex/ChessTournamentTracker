@@ -134,7 +134,7 @@ export default function Tournament() {
               }} />}
             </> : "Tournament has ended."
           ) : (
-            info.players.length > 0 && <Button text="Start Tournament" onClick={async () => {
+            info.players.length > 0 ? <Button text="Start Tournament" onClick={async () => {
               // Send post to /api/tournament/start/{tournamentId}
               // on success reload tournament info
               const response = await fetch('/api/tournament/start/' + id, {
@@ -147,7 +147,7 @@ export default function Tournament() {
               } else {
                 alert('Failed to start tournament: ' + await response.text());
               }
-            }} />
+            }} /> : "Waiting for players to join before the tournament can be started."
           ))) : (
             info.tournament_state === "0" ? "Tournament has not yet started. Sign in to join!" : (info.tournament_state === "1" ? "Tournament is in progress." : "Tournament has ended."))
         )}
