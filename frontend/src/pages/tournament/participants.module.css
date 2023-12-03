@@ -46,3 +46,10 @@
 .participants-table tr:nth-child(odd) {
     background-color: var(--brown);
 }
+
+.participants-table tbody tr:hover {
+    outline: 3px solid #222;
+    background-color: #222;
+    color: white;
+    cursor: pointer;
+}

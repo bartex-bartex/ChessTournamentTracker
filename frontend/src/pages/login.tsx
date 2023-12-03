@@ -21,10 +21,10 @@ export default function Login() {
         <FontAwesomeIcon icon={faLock} />
         &nbsp; Log into your account:
       </h1>
-      <Input label="Username" onChange={e => {
+      <Input className={styles["field"]} label="Username" onChange={e => {
         setUsername(e.target.value);
       }} />
-      <Input label="Password" type="password" onChange={e => {
+      <Input className={styles["field"]} label="Password" type="password" onChange={e => {
         setPassword(e.target.value);
       }} />
       <Button text="Log In" onClick={async () => {

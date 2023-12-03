@@ -46,3 +46,21 @@
 .round-table tr:nth-child(odd) {
     background-color: var(--brown);
 }
+
+.round-table tr:nth-child(odd) .view-game-button {
+    color: var(--brown);
+}
+
+.round-table tr:nth-child(even) .view-game-button {
+    color: var(--yellow);
+}
+
+.round-table tr:nth-child(odd) .view-game-button:hover {
+    background-color: var(--yellow);
+    color: var(--brown);
+}
+
+.round-table tr:nth-child(even) .view-game-button:hover {
+    background-color: var(--brown);
+    color: var(--yellow);
+}

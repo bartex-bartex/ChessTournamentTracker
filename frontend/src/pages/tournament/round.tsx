@@ -2,6 +2,8 @@ import { useParams } from "react-router";
 import styles from "./round.module.css";
 import { useCallback, useEffect, useState } from "react";
 import TournamentNavbar from "../../components/tournament-navbar";
+import Button from "../../components/button";
+import { useNavigate } from "react-router-dom";
 
 // [{"match_id":"1","black_last_name":"Żeliński","white_last_name":"ESf","score":"0","black_player_id":"7","round":"1","white_first_name":"ESf","game_notation":"","white_player_id":"9","black_first_name":"Tomasz","white_fide":"0","black_fide":"100","table":"1"}]
 interface TournamentMatch {
@@ -26,6 +28,7 @@ export default function TournamentRound() {
   const { tournamentId, round } = useParams();
   const [roundInfo, setRoundInfo] = useState<TournamentMatch[]>([]);
   const [tournamentInfo, setTournamentInfo] = useState<any>(null);
+  const navigate = useNavigate();
 
   const fetchRoundData = useCallback(async (reload: boolean) => {
     try {
@@ -101,6 +104,7 @@ export default function TournamentRound() {
                       <th>Result</th>
                       <th>Black Player</th>
                       <th>Black Score</th>
+                      <th>Game</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -139,6 +143,13 @@ export default function TournamentRound() {
                         </td>
                         <td>{data.black_first_name} {data.black_last_name}</td>
                         <td>{parseFloat(data.black_score || "0").toFixed(1)}</td>
+                        <td>{data.game_notation ? <Button className={styles['view-game-button']} text="View" onClick={() => navigate(`/tournament/${tournamentId}/game/${data.match_id}`)} /> : (
+                          tournamentInfo.is_admin == "1" && tournamentInfo.tournament_state == "1" ? (
+                            <Button className={styles['view-game-button']} text="Add" onClick={() => navigate(`/tournament/${tournamentId}/game/${data.match_id}`)} />
+                          ) : (
+                            "N/A"
+                          )
+                        )}</td>
                       </tr>
                     ))}
                   </tbody>

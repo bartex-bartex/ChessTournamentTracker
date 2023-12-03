@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import styles from './participants.module.css';
 import TournamentNavbar from '../../components/tournament-navbar';
 
@@ -19,7 +19,7 @@ interface TournamentInfo {
 }
 
 interface PlayerInfo {
-  player_id: number;
+  user_id: number;
   first_name: string;
   last_name: string;
   start_fide: string;
@@ -38,6 +38,7 @@ interface Players {
 export default function TournamentParticipants() {
   const { id } = useParams();
   const [tournamentInfo, setTournamentInfo] = useState<TournamentInfo | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTournamentData = async () => {
@@ -52,7 +53,7 @@ export default function TournamentParticipants() {
         if (body.players) {
           body.player_data = body.players.map((player) => {
             return {
-              player_id: player.user_id,
+              user_id: player.user_id,
               first_name: player.first_name,
               last_name: player.last_name,
               start_fide: player.fide,
@@ -92,7 +93,7 @@ export default function TournamentParticipants() {
                 <tbody>
                   {/* user_id, first_name, last_name, username, fide */}
                   {tournamentInfo.player_data.slice().sort((a, b) => parseFloat(b.start_fide || "0") - parseFloat(a.start_fide || "0")).map((player, i) => (
-                    <tr key={i}>
+                    <tr key={i} onClick={() => navigate(`/other-user/${player.user_id}`)}>
                       <td>{i + 1}</td>
                       <td>{`${player.first_name} ${player.last_name}`}</td>
                       <td>{player.start_fide}</td>

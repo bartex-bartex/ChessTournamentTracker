@@ -15,9 +15,11 @@ import TournamentParticipants from "./pages/tournament/participants";
 import TournamentRanking from "./pages/tournament/ranking";
 import TournamentResults from "./pages/tournament/results";
 import TournamentRound from "./pages/tournament/round";
+import TournamentGame from "./pages/tournament/game";
 import NotFound from "./pages/not-found";
 
 import Context from "./context";
+import OtherUser from "./pages/other-user";
 
 function App() {
   const [signedInUser, setSignedInUser] = useState("");
@@ -50,6 +52,7 @@ function App() {
             <Route path="/login" Component={Login} />
             <Route path="/register" Component={Register} />
             <Route path="/user" Component={User} />
+            <Route path="/other-user/:id" Component={OtherUser} />
             <Route path="/create" Component={Create} />
             <Route path="/tournament/:id" Component={Tournament} />
             <Route
@@ -67,6 +70,10 @@ function App() {
             <Route
               path="/tournament/:tournamentId/round/:round"
               Component={TournamentRound}
+            />
+            <Route
+              path="/tournament/:tournamentId/game/:matchId"
+              Component={TournamentGame}
             />
             <Route path="*" Component={NotFound} />
           </Routes>

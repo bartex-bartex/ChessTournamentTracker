@@ -1117,11 +1117,11 @@ public class Tournament {
                     //case 0 -> // 00 = Nie chcemy edytować ani score ani gameNotation
                     //        "";
                     case 1 -> // 01 = Chcemy edytować tylko gameNotation
-                            String.format("UPDATE matches SET game_notation = ? WHERE match_id = %d;", gameNotation, matchId);
+                            String.format("UPDATE matches SET game_notation = ? WHERE match_id = %d;", matchId);
                     case 2 -> // 10 = Chcemy edytować tylko score
                             String.format("UPDATE matches SET score = %d WHERE match_id = %d;", score, matchId);
                     case 3 -> // 11 = Chcemy edytować i score i gameNotation
-                            String.format("UPDATE matches SET score = %d, game_notation = ? WHERE match_id = %d;", score, gameNotation, matchId);
+                            String.format("UPDATE matches SET score = %d, game_notation = ? WHERE match_id = %d;", score, matchId);
                     default ->
                             throw new IllegalStateException("Unexpected value: " + mode);
                 };
@@ -1167,6 +1167,8 @@ public class Tournament {
                     }
                     st.execute(query);
                     return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
+                } else if (mode == 1) {
+                  return new ResponseEntity<>("Match successfully updated (CODE 200)",HttpStatus.OK);
                 }
                 return new ResponseEntity<>("No data to update (CODE 409)", HttpStatus.CONFLICT);
             }
@@ -1174,6 +1176,9 @@ public class Tournament {
         }
         catch (Exception e) {
             System.out.println(e.getMessage());
+            for (StackTraceElement ste : e.getStackTrace()) {
+                System.out.println(ste + "\n");
+            }
             return new ResponseEntity<>("Internal server error (CODE 500)", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

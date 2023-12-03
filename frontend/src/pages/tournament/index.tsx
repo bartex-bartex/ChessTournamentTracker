@@ -1,16 +1,18 @@
 import styles from "./index.module.css";
 
-import { ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/button";
 import TournamentNavbar from "../../components/tournament-navbar";
 import Context from "../../context";
+import Input from "../../components/input";
 
 export default function Tournament() {
   const { id } = useParams();
   const [info, setInfo] = useState<any>(null);
   const navigate = useNavigate();
   const context = useContext(Context);
+  const newNumberOfRounds = useRef(0);
 
   const loadTournamentInfo = useCallback(async () => {
     try {
@@ -71,6 +73,8 @@ export default function Tournament() {
             </tbody>
           </table>
         </div>
+        {/* Only God knows what's below there */}
+        {/* Honestly would tidy it up into proper conditional logic, but I am too afraid of introducing new bugs into the codebase. */}
         {info && (
           context.signedInUser ? (info.is_admin === "0" ? (
             (info.players || info.player_data).filter((p: any) => p.username === context.signedInUser).length === 0 ? (
@@ -99,7 +103,7 @@ export default function Tournament() {
                 // tournament has ended
                 "You participated."
             )
-          ) : (!info.players ? (
+          ) : (info.tournament_state !== "0" ? (
             info.tournament_state !== "2" ? <>
               <Button text="End Tournament" onClick={async () => {
                 // Send post to /api/tournament/start/{tournamentId}
@@ -133,21 +137,46 @@ export default function Tournament() {
                 }
               }} />}
             </> : "Tournament has ended."
-          ) : (
-            info.players.length > 0 ? <Button text="Start Tournament" onClick={async () => {
-              // Send post to /api/tournament/start/{tournamentId}
-              // on success reload tournament info
-              const response = await fetch('/api/tournament/start/' + id, {
-                method: 'PATCH',
-              });
+          ) : (<>
+            <div>
+              <h4>Change Number of Rounds</h4>
+              <div className={styles["change-rounds"]}>
+                <Input type="number" defaultValue={info.rounds} onChange={async (e) => {
+                  newNumberOfRounds.current = parseInt((e.target as HTMLInputElement).value);
+                }} />
+                <Button text="Change" onClick={async () => {
+                  const response = await fetch('/api/tournament/change-rounds-no?' + new URLSearchParams([
+                    ["tournamentId", id!.toString()],
+                    ["newRounds", newNumberOfRounds.current.toString()],
+                  ]), {
+                    method: 'PUT',
+                  });
 
-              if (response.ok) {
-                alert('Tournament started.');
-                loadTournamentInfo();
-              } else {
-                alert('Failed to start tournament: ' + await response.text());
-              }
-            }} /> : "Waiting for players to join before the tournament can be started."
+                  if (response.ok) {
+                    alert('Number of rounds changed successfully.');
+                    loadTournamentInfo();
+                  } else {
+                    alert('Failed to change number of rounds: ' + await response.text());
+                  }
+                }} />
+              </div>
+            </div>
+            {
+              info.players.length > 0 ? <Button text="Start Tournament" onClick={async () => {
+                // Send post to /api/tournament/start/{tournamentId}
+                // on success reload tournament info
+                const response = await fetch('/api/tournament/start/' + id, {
+                  method: 'PATCH',
+                });
+
+                if (response.ok) {
+                  alert('Tournament started.');
+                  loadTournamentInfo();
+                } else {
+                  alert('Failed to start tournament: ' + await response.text());
+                }
+              }} /> : "Waiting for players to join before the tournament can be started."
+            }</>
           ))) : (
             info.tournament_state === "0" ? "Tournament has not yet started. Sign in to join!" : (info.tournament_state === "1" ? "Tournament is in progress." : "Tournament has ended."))
         )}
