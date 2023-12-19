@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import TournamentNavbar from "../../components/tournament-navbar";
 import Button from "../../components/button";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 // [{"match_id":"1","black_last_name":"Żeliński","white_last_name":"ESf","score":"0","black_player_id":"7","round":"1","white_first_name":"ESf","game_notation":"","white_player_id":"9","black_first_name":"Tomasz","white_fide":"0","black_fide":"100","table":"1"}]
 interface TournamentMatch {
@@ -24,10 +25,21 @@ interface TournamentMatch {
   black_score: string;
 }
 
+type TournamentInfoResponse = {
+  tournament_id: number;
+  start_date: string;
+  name: string;
+  time_control: string;
+  location: string;
+  role: string;
+  tournament_state: string;
+  is_admin: string;
+};
+
 export default function TournamentRound() {
   const { tournamentId, round } = useParams();
   const [roundInfo, setRoundInfo] = useState<TournamentMatch[]>([]);
-  const [tournamentInfo, setTournamentInfo] = useState<any>(null);
+  const [tournamentInfo, setTournamentInfo] = useState<TournamentInfoResponse | null>(null);
   const navigate = useNavigate();
 
   const fetchRoundData = useCallback(async (reload: boolean) => {
@@ -63,7 +75,7 @@ export default function TournamentRound() {
       console.error('Error fetching round data:', err);
       setRoundInfo([]);
     }
-  }, [tournamentId, round]);
+  }, [tournamentId, round, roundInfo]);
 
   const fetchTournamentData = useCallback(async () => {
     try {
@@ -72,7 +84,7 @@ export default function TournamentRound() {
         alert('Failed to fetch tournament details: ' + await response.text());
         return;
       }
-      const body = await response.json();
+      const body: TournamentInfoResponse = await response.json();
       setTournamentInfo(body);
     } catch (err) {
       console.error('Error fetching tournament data:', err);
@@ -110,7 +122,7 @@ export default function TournamentRound() {
                   <tbody>
                     {roundInfo.map((data, i) => (
                       <tr key={data.match_id}>
-                        <td>{i + 1}</td>
+                        <td>{i + 1} {data.match_id}</td>
                         <td>{parseFloat(data.white_score || "0").toFixed(1)}</td>
                         <td>{data.white_first_name} {data.white_last_name}</td>
                         <td>

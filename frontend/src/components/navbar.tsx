@@ -2,7 +2,7 @@ import styles from "./navbar.module.css";
 
 import { Link, useNavigate } from "react-router-dom";
 
-import { useContext } from "react";
+import React, { useContext } from "react";
 import Context from "../context";
 import { faChessPawn } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

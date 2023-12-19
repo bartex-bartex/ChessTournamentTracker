@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import styles from "./create.module.css";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import Input from "../components/input";
-import { useState } from "react";
+import React, { useState } from "react";
 import Button from "../components/button";
 import { useNavigate } from "react-router-dom";
 

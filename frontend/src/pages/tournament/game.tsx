@@ -7,6 +7,7 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLeftLong, faRightLong } from "@fortawesome/free-solid-svg-icons";
+import React from "react";
 
 function getFenAtNthMove(pgn: string, n: number) {
   const chess = new Chess();
@@ -20,7 +21,7 @@ function getFenAtNthMove(pgn: string, n: number) {
 function getGameLength(pgn: string) {
   const chess = new Chess();
   chess.loadPgn(pgn);
-  return chess.history().length;
+  return chess.history().length + 1;
 }
 
 export default function TournamentGame() {

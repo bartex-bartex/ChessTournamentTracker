@@ -3,9 +3,10 @@ import styles from "./register.module.css";
 import Input from "../components/input";
 import Button from "../components/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLock, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 import Context from "../context";
 

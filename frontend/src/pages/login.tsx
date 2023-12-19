@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import React from "react";
 
 import Context from "../context";
 

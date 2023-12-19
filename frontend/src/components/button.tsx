@@ -1,5 +1,7 @@
 import styles from "./button.module.css";
 
+import React from "react";
+
 type Props = {
   text: string;
   onClick?: () => void;

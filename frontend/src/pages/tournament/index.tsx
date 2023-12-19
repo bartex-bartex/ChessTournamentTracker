@@ -1,6 +1,6 @@
 import styles from "./index.module.css";
 
-import { ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/button";
 import TournamentNavbar from "../../components/tournament-navbar";
@@ -24,7 +24,7 @@ export default function Tournament() {
       const body = await response.json();
       setInfo(body);
     } catch (err) {
-      setInfo("");
+      setInfo(null);
     }
   }, [id]);
 
@@ -34,7 +34,7 @@ export default function Tournament() {
 
   return (
     <div className={styles["tournament"]}>
-      <TournamentNavbar tournamentInfo={info} />
+      <TournamentNavbar tournamentInfo={info!} />
       <div className={styles["tournament-container"]}>
         <h1>{info ? info.name : ""}</h1>
         <p>{info ? info.info : ""}</p>

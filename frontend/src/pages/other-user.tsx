@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import styles from './other-user.module.css'; // You will need to create this CSS module.
 
 interface UserInfo {
@@ -11,14 +11,6 @@ interface UserInfo {
   first_name: string;
   username: string;
 }
-
-type Tournament = {
-  id: number;
-  date: string;
-  name: string;
-  timeControl: string;
-  place: string;
-};
 
 export default function OtherUser() {
   const { id } = useParams();

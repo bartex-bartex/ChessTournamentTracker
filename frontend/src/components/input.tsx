@@ -1,5 +1,7 @@
 import styles from "./input.module.css";
 
+import React from "react";
+
 type Props = {
   label?: string;
   type?: string;

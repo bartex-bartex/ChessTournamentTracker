@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styles from './participants.module.css';
 import TournamentNavbar from '../../components/tournament-navbar';
+import React from 'react';
 
 interface TournamentInfo {
   end_date: string;

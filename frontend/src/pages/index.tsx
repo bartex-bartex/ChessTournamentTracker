@@ -1,7 +1,7 @@
 import styles from "./index.module.css";
 
 import Button from "../components/button";
-import { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import Context from "../context";
 import { useNavigate } from 'react-router-dom';
