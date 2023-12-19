@@ -122,7 +122,7 @@ export default function TournamentRound() {
                   <tbody>
                     {roundInfo.map((data, i) => (
                       <tr key={data.match_id}>
-                        <td>{i + 1} {data.match_id}</td>
+                        <td>{i + 1}</td>
                         <td>{parseFloat(data.white_score || "0").toFixed(1)}</td>
                         <td>{data.white_first_name} {data.white_last_name}</td>
                         <td>
