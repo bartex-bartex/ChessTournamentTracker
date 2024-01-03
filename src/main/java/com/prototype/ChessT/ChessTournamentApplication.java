@@ -36,7 +36,6 @@ public class ChessTournamentApplication {
   public static void main(String[] args) {
     String temp;
 
-    SpringApplication.run(ChessTournamentApplication.class, args);
     try {
       Class.forName("org.postgresql.Driver");
 
@@ -47,10 +46,11 @@ public class ChessTournamentApplication {
       String pguser = System.getenv("PGUSER");
       String pgpassword = System.getenv("PGPASSWORD");
 
-      // connection=DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres","postgres","root");
-      connection = DriverManager.getConnection(
+      connection=DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres","postgres","root");
+      /*connection = DriverManager.getConnection(
           "jdbc:postgresql://" + pghost + ":" + pgport + "/" + pgdatabase,
           pguser, pgpassword);
+      */
       if (connection != null) {
         temp = "OK";
       } else {
@@ -65,6 +65,8 @@ public class ChessTournamentApplication {
     } catch (Exception e) {
       temp = e.getMessage();
     }
+    SpringApplication.run(ChessTournamentApplication.class, args);
+
   }
 
   /**
@@ -188,7 +190,7 @@ public class ChessTournamentApplication {
                                                     HttpStatus.OK);
     } catch (Exception e) {
                         return new ResponseEntity<>(
-                            "Internal server error (CODE 500)",
+                            "Internal server error (CODE 500)"+e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

@@ -24,7 +24,9 @@ dependencies {
 }
 
 tasks.named('test') {
+	main = 'com.prototype.ChessT.ChessTournamentApplication'
 	useJUnitPlatform()
+	testLogging.showStandardStreams=true
 }
 
 task runDev(type: JavaExec) {
