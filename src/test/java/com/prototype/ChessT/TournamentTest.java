@@ -6,6 +6,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.sql.SQLException;
 
@@ -68,8 +70,8 @@ class TournamentTest {
             (4, 3, 10),
             (4, 1, -10);
             insert into sessions values ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1', 1, now() - interval '1 minute'),
-            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2', 1, now() - interval '1 minute'),
-            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3', 1, now() - interval '1 minute');
+            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2', 2, now() - interval '1 minute'),
+            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3', 3, now() - interval '1 minute');
         """).execute();
         }
         catch(SQLException e){
@@ -116,10 +118,21 @@ class TournamentTest {
 
     @Test
     void endTournament() {
+        ResponseEntity<String> responseEntity = tr.endTournament(2,"xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2");
+        System.out.println(responseEntity.getStatusCode());
+        assert(responseEntity.getStatusCode() == HttpStatus.OK);
+
+        responseEntity = tr.endTournament(3,"xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3");
+        System.out.println(responseEntity.getStatusCode());
+        assert(responseEntity.getStatusCode() == HttpStatus.CONFLICT);
     }
 
     @Test
     void changeRoundsNo() {
-        ur.login();
+        ResponseEntity<String> responseEntity = tr.changeRoundsNo("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3",3,255);
+        assert(responseEntity.getStatusCode() == HttpStatus.OK);
+
+        responseEntity = tr.changeRoundsNo("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2",3,255);
+        assert(responseEntity.getStatusCode() == HttpStatus.CONFLICT);
     }
 }
