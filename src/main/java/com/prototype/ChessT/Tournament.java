@@ -1092,9 +1092,6 @@ public class Tournament {
                                               @RequestParam(value = "score", defaultValue = "2") int score,
                                               @RequestParam(value = "gameNotation", defaultValue = "") String gameNotation
     ){
-        //if(score <-1 || score >3){
-        //    return new ResponseEntity<>("Invalid score value (CODE 409)", HttpStatus.CONFLICT);
-        //}
         if((score > 2 || score < -1) && gameNotation.isEmpty())
             return new ResponseEntity<>("No data tu update (CODE 409)", HttpStatus.CONFLICT);
         int userId = -1;
