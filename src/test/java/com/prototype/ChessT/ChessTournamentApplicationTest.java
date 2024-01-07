@@ -120,6 +120,12 @@ class ChessTournamentApplicationTest {
 
     @Test
     void kValue() {
+        assertEquals(10, ChessTournamentApplication.kValue(2500, false));
+        assertEquals(10, ChessTournamentApplication.kValue(2500, true));
+        assertEquals(20, ChessTournamentApplication.kValue(2350, false));
+        assertEquals(20, ChessTournamentApplication.kValue(1500, true));
+        assertEquals(40, ChessTournamentApplication.kValue(1500, false));
+
     }
 
     String extractAuth(HttpServletResponse rs){

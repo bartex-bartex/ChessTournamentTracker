@@ -31,24 +31,6 @@ class TournamentTest {
     }
 
     @BeforeEach
-    void clearData(){
-        try {
-            ChessTournamentApplication.connection.prepareStatement("""
-            delete from fide_changes;
-            delete from matches;
-            delete from tournament_roles;
-            delete from tournaments;
-            delete from sessions;
-            delete from users;
-        """).execute();
-        }
-        catch(SQLException e){
-            System.out.println(e.getMessage());
-            fail();
-        }
-    }
-
-    @BeforeEach
     void clearAndInsertData(){
         try {
             ChessTournamentApplication.connection.prepareStatement("""
@@ -63,7 +45,7 @@ class TournamentTest {
             (3, 'player3', 'player3@mail.com', 'player3password', 'player3name', 'player3lastname', 'player3sex', '2002-03-03', 2200, 40);
             insert into tournaments values (1, 'tournament1', 'tournament1location', 'tournament1organiser','tournament1timecontrol', now() - interval '2 month', now() - interval '1 month', 2, 'tournament1info', 2),
             (2, 'tournament2', 'tournament2location', 'tournament2organiser','tournament2timecontrol', now() - interval '10 day', now() + interval '2 day', 2, 'tournament2info', 1),
-            (3, 'tournament3', 'tournament3location', 'tournament3organiser','tournament3timecontrol', now() + interval '5 day', now() + interval '10 day', 1, 'tournament3info', 0);
+            (3, 'tournament3', 'tournament3location', 'tournament3organiser','tournament3timecontrol', now() + interval '5 day', now() + interval '10 day', 3, 'tournament3info', 0);
             insert into tournament_roles values (1, 1, 'admin', 2000, 20, 0),
             (2, 2, 'admin', 2100, 20, 0),
             (3, 3, 'admin', 2200, 40, 0),
@@ -85,21 +67,15 @@ class TournamentTest {
             (3, 3, 10),
             (4, 3, 10),
             (4, 1, -10);
-            insert into sessions values ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdxd', 1, now() - interval '1 minute');
+            insert into sessions values ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1', 1, now() - interval '1 minute'),
+            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2', 1, now() - interval '1 minute'),
+            ('xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3', 1, now() - interval '1 minute');
         """).execute();
         }
         catch(SQLException e){
             System.out.println(e.getMessage());
             fail();
         }
-    }
-
-    @Test
-    void firstRoundPairings() {
-    }
-
-    @Test
-    void generateRoundPairings() {
     }
 
     @Test
