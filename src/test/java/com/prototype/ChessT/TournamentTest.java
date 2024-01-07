@@ -82,9 +82,12 @@ class TournamentTest {
 
     @Test
     void generateRoundPairings() {
-        assertEquals(HttpStatus.CONFLICT, tr.generateRoundPairings(3, 2, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3").getStatusCode());
-        assertEquals(HttpStatus.OK, tr.generateRoundPairings(3, 3, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3").getStatusCode());
-        System.out.println(tr.tournamentInfo("", 3));
+        assertEquals(HttpStatus.CONFLICT, tr.generateRoundPairings(2, 2, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.generateRoundPairings(2, 4, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
+        assertEquals(HttpStatus.OK, tr.generateRoundPairings(2, 3, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
+        String temp = tr.tournamentInfo("", 2).getBody();
+        int index = temp.indexOf("rounds_generated\":")+18;
+        assertEquals("3", temp.substring(index, index + 1));
     }
 
     @Test
