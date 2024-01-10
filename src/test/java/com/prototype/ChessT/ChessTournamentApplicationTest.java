@@ -7,12 +7,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.sql.SQLException;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Klasa do testowania klasy ChessTournamentApplication
+ */
 @SpringBootTest
 class ChessTournamentApplicationTest {
     @Autowired
@@ -22,6 +27,10 @@ class ChessTournamentApplicationTest {
     @Autowired
     User ur;
 
+    /**
+     * Funkcja wykonywana przed rozpoczęciem testów.
+     * Nawiązuje połączenie z testową bazą danych.
+     */
     @BeforeAll
     static void startTest(){
         try {
@@ -33,6 +42,10 @@ class ChessTournamentApplicationTest {
         }
     }
 
+    /**
+     * Funkcja wykonywuje się przed każdym testem z osobna.
+     * Czyści testową bazę danych i dodaje do niej testowe dane.
+     */
     @BeforeEach
     void clearAndInsertData(){
         try {
@@ -78,18 +91,13 @@ class ChessTournamentApplicationTest {
             fail();
         }
     }
-
+    /**
+     * Funkcja wykonywana po zakończeniu wszystkich testów.
+     * Zamyka połączenie z bazą danych.
+     */
     @AfterAll
     static void endTest(){
         try {
-            /*ChessTournamentApplication.connection.prepareStatement("""
-            delete from fide_changes;
-            delete from matches;
-            delete from tournament_roles;
-            delete from tournaments;
-            delete from sessions;
-            delete from users;
-        """).execute();*/
             ChessTournamentApplication.connection.close();
         }
         catch(SQLException e){
@@ -98,6 +106,10 @@ class ChessTournamentApplicationTest {
         }
     }
 
+    /**
+     * Test ChessTournamentApplication.fideUpdate()
+     * Wywołuje funkcję i sprawdza, czy fide po update jest prawidłowe.
+     */
     @Test
     void fideUpdate() {
         cta.fideUpdate();
@@ -106,18 +118,34 @@ class ChessTournamentApplicationTest {
         assertEquals("2187", temp.substring(index, index + 4));
     }
 
+    /**
+     * Test ChessTournamentApplication.homepage()
+     * Wywołuje powyższą funkcję, następnie sprawdza czy zwraca ona poprawny HttpsStatus
+     * i czy ilość znaków, którą zwraca się zgadza.
+     */
     @Test
     void homepage() {
         ResponseEntity<String> rs = cta.homepage(-1, 1, 100);
-        assertEquals(594, rs.getBody().length());
+        assertEquals(rs.getStatusCode(),HttpStatus.OK);
+        assertEquals(594, Objects.requireNonNull(rs.getBody()).length());
     }
 
+    /**
+     * Test ChessTournamentApplication.search()
+     * Wywołuje powyższą funkcję, następnie sprawdza czy zwraca ona poprawny HttpsStatus
+     * oraz czy ilość znaków, którą zwraca się zgadza.
+     */
     @Test
     void search() {
         ResponseEntity<String> rs = cta.search("tournament1");
-        assertEquals(190, rs.getBody().length());
+        assertEquals(rs.getStatusCode(),HttpStatus.OK);
+        assertEquals(190, Objects.requireNonNull(rs.getBody()).length());
     }
 
+    /**
+     * Test ChessTournamentApplication.kValue()
+     * Wywołuje powyższą funkcję dla szeregu testów i sprawdza, czy zwraca poprawne wartości.
+     */
     @Test
     void kValue() {
         assertEquals(10, ChessTournamentApplication.kValue(2500, false));
@@ -126,11 +154,5 @@ class ChessTournamentApplicationTest {
         assertEquals(20, ChessTournamentApplication.kValue(1500, true));
         assertEquals(40, ChessTournamentApplication.kValue(1500, false));
 
-    }
-
-    String extractAuth(HttpServletResponse rs){
-        String resStr = rs.getHeader("Set-Cookie");
-        int temp = resStr.lastIndexOf("auth=")+5;
-        return resStr.substring(temp, temp+32);
     }
 }

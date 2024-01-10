@@ -45,7 +45,7 @@ class UserTest {
 
     /**
      * Funkcja wykonywuje się przed każdym testem z osobna.
-     * Czyści testową bazę danych i dodaje do niej testowe dane.
+     * Czyści testową bazę danych.
      */
     @BeforeEach
     void clearData(){
