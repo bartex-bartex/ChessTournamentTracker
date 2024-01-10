@@ -16,6 +16,9 @@ import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Klasa do testowania klasy User
+ */
 @SpringBootTest
 class UserTest {
     @Autowired
@@ -25,6 +28,10 @@ class UserTest {
     @Autowired
     User ur;
 
+    /**
+     * Funkcja wykonywana przed rozpoczęciem testów.
+     * Nawiązuje połączenie z testową bazą danych.
+     */
     @BeforeAll
     static void startTest(){
         try {
@@ -36,6 +43,10 @@ class UserTest {
         }
     }
 
+    /**
+     * Funkcja wykonywuje się przed każdym testem z osobna.
+     * Czyści testową bazę danych i dodaje do niej testowe dane.
+     */
     @BeforeEach
     void clearData(){
         try {
@@ -54,17 +65,13 @@ class UserTest {
         }
     }
 
+    /**
+     * Funkcja wykonywana po zakończeniu wszystkich testów.
+     * Zamyka połączenie z bazą danych.
+     */
     @AfterAll
     static void endTest(){
         try {
-            ChessTournamentApplication.connection.prepareStatement("""
-            delete from fide_changes;
-            delete from matches;
-            delete from tournament_roles;
-            delete from tournaments;
-            delete from sessions;
-            delete from users;
-        """).execute();
             ChessTournamentApplication.connection.close();
         }
         catch(SQLException e){
@@ -73,6 +80,10 @@ class UserTest {
         }
     }
 
+    /**
+     * Test User.user()
+     * Rejestruje nowego użytkownika, następnie weryfikuje zwrócony przez endpoint kod HttpStatus
+     */
     @Test
     void user() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -83,6 +94,10 @@ class UserTest {
         assert(responseEntity.getStatusCode() == HttpStatus.ACCEPTED);
     }
 
+    /**
+     * Test User.account()
+     * Rejestruje nowego użytkownika, wylogowywuje się, następnie weryfikuje zwrócony przez endpoint kod HttpStatus
+     */
     @Test
     void account() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -99,6 +114,11 @@ class UserTest {
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
     }
 
+    /**
+     * Test User.validate();
+     * Rejestruje nowe użytkownika, następnie sprawdza czy użytkownik jest zalogowany i weryfikuje czy zwraca poprawny HttpStatus.
+     * Wylogowywuje, następnie sprawdza czy zwraca HttpStatus dla niezalogowanego użytkownika.
+     */
     @Test
     void validate() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -107,8 +127,17 @@ class UserTest {
 
         ResponseEntity<String> responseEntity = ur.validate(extractAuth(rs));
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
+        ur.logout(extractAuth(rs));
+
+        responseEntity = ur.validate(extractAuth(rs));
+        assert(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED);
+
     }
 
+    /**
+     * Test User.login()
+     * Rejestruje użytkownika, wylogowywuje a następnie loguje i sprawdza, czy logowanie zwraca poprawny HttpsStatus.
+     */
     @Test
     void login() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -120,6 +149,11 @@ class UserTest {
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
     }
 
+    /**
+     * Test User.logout()
+     * Rejestruje użytykownika, a następnie wylogowywuje i spradza, czy wylogowywanie zwraca poprawny HttpStatus.
+     * Następnie sprawdza HttpsStatus kod próby wylogowywania, gdy nie ma zalogowania żadnego użytkownika.
+     */
     @Test
     void logout() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -128,8 +162,15 @@ class UserTest {
 
         ResponseEntity<String> responseEntity = ur.logout(extractAuth(rs));
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
+
+        responseEntity = ur.logout(extractAuth(rs));
+        assert(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED);
     }
 
+    /**
+     * Test User.register()
+     * Rejestruje użytkownika i sprawdza, czy rejestracja zwraca poprawny HttpStatus.
+     */
     @Test
     void register() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -138,6 +179,10 @@ class UserTest {
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
     }
 
+    /**
+     * Test User.myTournaments()
+     * Rejestruje użytkownika, wywołuje myTournaments() i spradza, czy funkcja zwraca poprawny HttpsStatus.
+     */
     @Test
     void myTournaments() {
         HttpServletResponse rs = new MockHttpServletResponse();
@@ -148,12 +193,21 @@ class UserTest {
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
     }
 
+    /**
+     * Test User.randomString32Char()
+     * Wywołuje powyższą funkcję, a następnie sprawdza, czy jej długość jest równa 32.
+     */
     @Test
     void randomString32Char() {
         String string = ur.randomString32Char();
         assert(string.length() == 32);
     }
 
+    /**
+     * Test User.hashPassword()
+     * Wywołuje powyższą funkcje dla hasła z dwóch różnych username.
+     * Następnie sprawdza, czy poprawnie jest zashasowane i sprawdza, czy zahashowane te same hasła dla różnych użytkowników są różne.
+     */
     @Test
     void hashPassword() {
         String h1 = null;
@@ -168,6 +222,11 @@ class UserTest {
         assertNotEquals(h1,h2);
     }
 
+    /**
+     * Funkcja pomocnicza, która wyciąga z HttpServletResponse cookie autoryzacyjny.
+     * @param rs
+     * @return String - auth cookie
+     */
     String extractAuth(HttpServletResponse rs){
         String resStr = rs.getHeader("Set-Cookie");
         int temp = resStr.lastIndexOf("auth=")+5;
