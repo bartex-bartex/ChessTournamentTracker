@@ -161,6 +161,12 @@ class TournamentTest {
         assertEquals(HttpStatus.OK, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 4).getStatusCode());
     }
 
+    /**
+     * Test Tournament.tournamentInfo()
+     * Próbujemy uzyskać informacje o nieistniejącym turnieju,
+     * sprawdzamy długość informacji o tournieju odpowiednio 1., 2. oraz 3.,
+     * dodatkowo sprawdzamy status zwracany przez funkcję.
+     */
     @Test
     void tournamentInfo() {
         assertEquals(HttpStatus.CONFLICT, tr.tournamentInfo("", 4).getStatusCode());
@@ -172,6 +178,12 @@ class TournamentTest {
         assertEquals(HttpStatus.OK, tr.tournamentInfo("", 3).getStatusCode());
     }
 
+    /**
+     * Test Tournament.getMatch(
+     * Próbujemy uzyskać informację o nieistniejącym meczu,
+     * sprawdzamy długość informacji o 1. meczu,
+     * sprawdzamy status zwracany przez funkcję dla meczy nr 1 oraz 3.
+     */
     @Test
     void getMatch() {
         assertEquals(HttpStatus.CONFLICT, tr.getMatch(5).getStatusCode());
@@ -180,6 +192,13 @@ class TournamentTest {
         assertEquals(HttpStatus.OK, tr.getMatch(3).getStatusCode());
     }
 
+    /**
+     * Test Tournament.getRound()
+     * Próbujemy uzyskać informację o rundzie w nieistniejącym turnieju,
+     * próbujemy uzyskać informację o nieistniejącej rundzie w niezaczętym turnieju,
+     * próbujemy uzyskać informację o niestniejącej rundzie w skończonym turnieju,
+     * sprawdzamy status zwracany dla istniejącej rundy w skończonym turnieju oraz długość informacji o tej rundzie.
+     */
     @Test
     void getRound() {
         assertEquals(HttpStatus.CONFLICT, tr.getRound(5, 1).getStatusCode());
@@ -189,6 +208,14 @@ class TournamentTest {
         assertEquals(350, tr.getRound(1,1).toString().length());
     }
 
+    /**
+     * Test Tournament.playerInfo()
+     * Próbujemy uzyskać informację o istniejącym graczu w nieistniejącym turnieju,
+     * próbujemy uzyskać informację o administratorze danego turnieju,
+     * próbujemy uzyskać informację o nieistniejącym graczu w istniejącym turnieju,
+     * sprawdzamy status, zwracany przez funkcję, dla poprawnych gracza i turnieju
+     * oraz sprawdzamy długość informacji
+     */
     @Test
     void playerInfo() {
         assertEquals(HttpStatus.CONFLICT, tr.playerInfo(5, 1).getStatusCode());
@@ -198,6 +225,14 @@ class TournamentTest {
         assertEquals(589, tr.playerInfo(1,2).toString().length());
     }
 
+    /**
+     * Test Tournament.updateMatch()
+     * Próbujemy zaktualizować mecz w turnieju, do którego nie mamy uprawnień,
+     * sprawdzamy status aktualizując tylko gameNotation,
+     * sprawdzamy czy nie zmienił się score i czy zminiło się gameNotation,
+     * sprawdzamy status aktualizując score, ale nie zmieniając gameNotation,
+     * sprawdzamy czy zmienił się score i czy nie zmieniło się gameNotation.
+     */
     @Test
     void updateMatch() {
         assertEquals(HttpStatus.CONFLICT, tr.updateMatch("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", 1, 2, "newNotation").getStatusCode());
@@ -217,6 +252,14 @@ class TournamentTest {
         assertEquals("newNotation", temp.substring(index, index+11));
     }
 
+    /**
+     * Test Tournament.startTournament()
+     * Tworzymy nowy turniej na potrzeby testów.
+     * Próbujemy wystartować turniej bez graczy,
+     * próbujemy wystartowaćm, już wystartowany, turniej,
+     * sprawdzamy status funkcji, ropoczynając turniej nr 3,
+     * próbujemy ponownie wystartować właśnie zaczęty turniej nr 3.
+     */
     @Test
     void startTournament() {
         assertEquals(HttpStatus.OK, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
@@ -228,6 +271,11 @@ class TournamentTest {
         assertEquals(HttpStatus.CONFLICT, tr.startTournament(3, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3").getStatusCode());
     }
 
+    /**
+     * Test Tournament.endTournament()
+     * Sprawdzamy status funkcji, kończąc trwający turniej,
+     * próbujemy zakończyć niezaczęty turniej.
+     */
     @Test
     void endTournament() {
         ResponseEntity<String> responseEntity = tr.endTournament(2,"xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2");
@@ -237,6 +285,11 @@ class TournamentTest {
         assert(responseEntity.getStatusCode() == HttpStatus.CONFLICT);
     }
 
+    /**
+     * Test Tournament.changeRoundsNo()
+     * Sprawdzamy status zwracany przez funkcję, zmieniając liczbę rund w turnieju nr 3, który nie jest zaczęty,
+     * próbujemy zmienić liczbę rund w turnieju nr 3 nie mając uprawnień.
+     */
     @Test
     void changeRoundsNo() {
         ResponseEntity<String> responseEntity = tr.changeRoundsNo("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3",3,255);
