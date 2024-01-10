@@ -92,18 +92,42 @@ class TournamentTest {
 
     @Test
     void create() {
+        assertEquals(HttpStatus.CONFLICT, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "tournament1",
+                "Cracow", "my organiser", "180+3", "2024-01-31",
+                "2024-02-29", 3, "new tournament info").getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
+                "Cracow", "my organiser", "180+3", "2024-01-31",
+                "2024-02-29", -1, "new tournament info").getStatusCode());
+        assertEquals(HttpStatus.OK, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
+                "Cracow", "my organiser", "180+3", "2024-01-31",
+                "2024-02-29", 3, "new tournament info").getStatusCode());
     }
 
     @Test
     void join() {
+        assertEquals(HttpStatus.OK, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
+                "Cracow", "my organiser", "180+3", "2024-01-31",
+                "2024-02-29", 3, "new tournament info").getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 5).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 2).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3", 3).getStatusCode());
+        assertEquals(HttpStatus.OK, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 4).getStatusCode());
     }
 
     @Test
     void tournamentInfo() {
+        assertEquals(HttpStatus.CONFLICT, tr.tournamentInfo("", 4).getStatusCode());
+        assertEquals(587, tr.tournamentInfo("", 1).toString().length());
+        assertEquals(583, tr.tournamentInfo("", 2).toString().length());
+        assertEquals(519, tr.tournamentInfo("", 3).toString().length());
     }
 
     @Test
     void getMatch() {
+        assertEquals(HttpStatus.CONFLICT, tr.getMatch(5).getStatusCode());
+        assertEquals(308, tr.getMatch(1).toString().length());
+        System.out.println(tr.getMatch(1).toString());
+        assertEquals(308, tr.getMatch(3).toString().length());
     }
 
     @Test
@@ -129,11 +153,9 @@ class TournamentTest {
     @Test
     void endTournament() {
         ResponseEntity<String> responseEntity = tr.endTournament(2,"xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2");
-        System.out.println(responseEntity.getStatusCode());
         assert(responseEntity.getStatusCode() == HttpStatus.OK);
 
         responseEntity = tr.endTournament(3,"xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3");
-        System.out.println(responseEntity.getStatusCode());
         assert(responseEntity.getStatusCode() == HttpStatus.CONFLICT);
     }
 

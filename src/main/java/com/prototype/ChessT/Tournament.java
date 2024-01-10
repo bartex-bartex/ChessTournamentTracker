@@ -609,11 +609,6 @@ public class Tournament {
         return new ResponseEntity<>(result.toString(), HttpStatus.OK);
       }
       JSONArray playerData = results(tournamentId);
-      //   if (playerData.isEmpty())
-      //             return new ResponseEntity<>(
-      //                 "No users in this tournament (CODE 409)",
-      //                 HttpStatus.CONFLICT);
-      // A to po co? Jeśli nie ma graczy to niech zwróci pustą tablicę
 
       query = String.format("select max(round) from matches where tournament_id = %d;",tournamentId);
       rs = st.executeQuery(query);
