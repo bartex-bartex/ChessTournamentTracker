@@ -165,36 +165,67 @@ class TournamentTest {
     void tournamentInfo() {
         assertEquals(HttpStatus.CONFLICT, tr.tournamentInfo("", 4).getStatusCode());
         assertEquals(587, tr.tournamentInfo("", 1).toString().length());
+        assertEquals(HttpStatus.OK, tr.tournamentInfo("", 1).getStatusCode());
         assertEquals(583, tr.tournamentInfo("", 2).toString().length());
+        assertEquals(HttpStatus.OK, tr.tournamentInfo("", 2).getStatusCode());
         assertEquals(519, tr.tournamentInfo("", 3).toString().length());
+        assertEquals(HttpStatus.OK, tr.tournamentInfo("", 3).getStatusCode());
     }
 
     @Test
     void getMatch() {
         assertEquals(HttpStatus.CONFLICT, tr.getMatch(5).getStatusCode());
         assertEquals(308, tr.getMatch(1).toString().length());
-        System.out.println(tr.getMatch(1).toString());
-        assertEquals(308, tr.getMatch(3).toString().length());
+        assertEquals(HttpStatus.OK, tr.getMatch(1).getStatusCode());
+        assertEquals(HttpStatus.OK, tr.getMatch(3).getStatusCode());
     }
 
     @Test
     void getRound() {
+        assertEquals(HttpStatus.CONFLICT, tr.getRound(5, 1).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.getRound(3, 1).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.getRound(1, 10).getStatusCode());
+        assertEquals(HttpStatus.OK, tr.getRound(1, 1).getStatusCode());
+        assertEquals(350, tr.getRound(1,1).toString().length());
     }
 
     @Test
     void playerInfo() {
-    }
-
-    @Test
-    void results() {
+        assertEquals(HttpStatus.CONFLICT, tr.playerInfo(5, 1).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.playerInfo(2, 2).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.playerInfo(2, 4).getStatusCode());
+        assertEquals(HttpStatus.OK, tr.playerInfo(1, 2).getStatusCode());
+        assertEquals(589, tr.playerInfo(1,2).toString().length());
     }
 
     @Test
     void updateMatch() {
+        assertEquals(HttpStatus.CONFLICT, tr.updateMatch("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", 1, 2, "newNotation").getStatusCode());
+
+        assertEquals(HttpStatus.OK, tr.updateMatch("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", 3, 3, "newNotation").getStatusCode());
+        String temp = tr.getMatch(3).toString();
+        int index = temp.indexOf("score\":")+8;
+        assertEquals("1", temp.substring(index, index+1));
+        index = temp.indexOf("game_notation\":")+16;
+        assertEquals("newNotation", temp.substring(index, index+11));
+
+        assertEquals(HttpStatus.OK, tr.updateMatch("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", 3, 0, "").getStatusCode());
+        temp = tr.getMatch(3).toString();
+        index = temp.indexOf("score\":")+8;
+        assertEquals("0", temp.substring(index, index+1));
+        index = temp.indexOf("game_notation\":")+16;
+        assertEquals("newNotation", temp.substring(index, index+11));
     }
 
     @Test
     void startTournament() {
+        assertEquals(HttpStatus.OK, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
+                "Cracow", "my organiser", "180+3", "2024-01-31",
+                "2024-02-29", 3, "new tournament info").getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.startTournament(4, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.startTournament(2, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
+        assertEquals(HttpStatus.OK, tr.startTournament(3, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3").getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.startTournament(3, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3").getStatusCode());
     }
 
     @Test
