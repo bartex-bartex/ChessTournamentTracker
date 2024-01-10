@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.*;
+/**
+ * Klasa do testowania klasy ChessTournamentApplication
+ */
 @SpringBootTest
 class TournamentTest {
     @Autowired
@@ -21,6 +24,10 @@ class TournamentTest {
     @Autowired
     User ur;
 
+    /**
+     * Funkcja wykonywana przed rozpoczęciem testów.
+     * Nawiązuje połączenie z testową bazą danych.
+     */
     @BeforeAll
     static void startTest(){
         try {
@@ -32,6 +39,10 @@ class TournamentTest {
         }
     }
 
+    /**
+     * Funkcja wykonywuje się przed każdym testem z osobna.
+     * Czyści testową bazę danych i dodaje do niej testowe dane.
+     */
     @BeforeEach
     void clearAndInsertData(){
         try {
@@ -80,6 +91,29 @@ class TournamentTest {
         }
     }
 
+    /**
+     * Funkcja wykonywana po zakończeniu wszystkich testów.
+     * Zamyka połączenie z bazą danych.
+     */
+    @AfterAll
+    static void endTest(){
+        try {
+            ChessTournamentApplication.connection.close();
+        }
+        catch(SQLException e){
+            System.out.println(e.getMessage());
+            fail();
+        }
+    }
+
+    /**
+     * Test Tournament.generateRoundPairings()
+     * Wywołujemy powyższą funkcję dla rundy w turnieju, która już się zaczeła,
+     * dla rundy, poprzednia nie jest jeszcze wygenerowana oraz
+     * dla rundy, która powinna zostać wygenerowana.
+     * Sprawdzamy czy HttpsStatus kody są zgodne z dokumentacją i dla poprawnego wywoływania spradzamy,
+     * czy poprawna runda się wygenerowała.
+     */
     @Test
     void generateRoundPairings() {
         assertEquals(HttpStatus.CONFLICT, tr.generateRoundPairings(2, 2, "xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2").getStatusCode());
@@ -90,6 +124,12 @@ class TournamentTest {
         assertEquals("3", temp.substring(index, index + 1));
     }
 
+    /**
+     * Test Tournament.create()
+     * Wywołujemy powyższą funkcję dla nazwy turnieju, która już istnieje,
+     * dla ujemnej liczby rund oraz dla poprawnego wywołania,
+     * a następnie czy HttpStatus kody odpowiednich wywołań się zgadzają.
+     */
     @Test
     void create() {
         assertEquals(HttpStatus.CONFLICT, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "tournament1",
@@ -102,15 +142,22 @@ class TournamentTest {
                 "Cracow", "my organiser", "180+3", "2024-01-31",
                 "2024-02-29", 3, "new tournament info").getStatusCode());
     }
-
+    /**
+     * Test Tournament.join()
+     * Tworzymy turniej, a następnie próbujemy dołączyć do turnieju który nie istnieje,
+     * próbujemy dołączyć do turnieju, w którym już jesteśmy graczami,
+     * próbujemy dołączyć do turnieju, w którym jesteśmy adminem oraz
+     * próbujemy dołączyć do turnieju, do którego możemy.
+     * Następnie sprawdzamy HttpsStatus kody odpowiednich wywołań się zgadzają.
+     */
     @Test
     void join() {
         assertEquals(HttpStatus.OK, tr.create("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx2", "new tournament",
                 "Cracow", "my organiser", "180+3", "2024-01-31",
                 "2024-02-29", 3, "new tournament info").getStatusCode());
-        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 5).getStatusCode());
-        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 2).getStatusCode());
-        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3", 3).getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 5).getStatusCode()); //nie istnieje
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 2).getStatusCode()); //jest graczem
+        assertEquals(HttpStatus.CONFLICT, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx3", 3).getStatusCode()); //jest adminem
         assertEquals(HttpStatus.OK, tr.join("xdxdxdxdxdxdxdxdxdxdxdxdxdxdxdx1", 4).getStatusCode());
     }
 
