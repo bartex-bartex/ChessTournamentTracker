@@ -34,37 +34,28 @@ public class ChessTournamentApplication {
    * @param args
    */
   public static void main(String[] args) {
-    String temp;
-
-    SpringApplication.run(ChessTournamentApplication.class, args);
     try {
       Class.forName("org.postgresql.Driver");
-
-      // Get credentials from environment variables
-      String pghost = System.getenv("PGHOST");
-      String pgport = System.getenv("PGPORT");
-      String pgdatabase = System.getenv("PGDATABASE");
-      String pguser = System.getenv("PGUSER");
-      String pgpassword = System.getenv("PGPASSWORD");
-
-      // connection=DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres","postgres","root");
-      connection = DriverManager.getConnection(
-          "jdbc:postgresql://" + pghost + ":" + pgport + "/" + pgdatabase,
-          pguser, pgpassword);
-      if (connection != null) {
-        temp = "OK";
-      } else {
-        temp = "Connection Failed";
-      }
-      // Uncomment (Open) at the close
-      /*
-      Statement st = connection.createStatement();
-      String query = "delete from sessions;";
-      st.execute(query);
-      */
+      connection = establishConnection(0);
     } catch (Exception e) {
-      temp = e.getMessage();
+      System.out.println(e.getMessage());
     }
+    SpringApplication.run(ChessTournamentApplication.class, args);
+  }
+
+  static Connection establishConnection(int mode) throws SQLException {
+      if(mode==0){
+          // Get credentials from environment variables
+          String pghost = System.getenv("PGHOST");
+          String pgport = System.getenv("PGPORT");
+          String pgdatabase = System.getenv("PGDATABASE");
+          String pguser = System.getenv("PGUSER");
+          String pgpassword = System.getenv("PGPASSWORD");
+          return DriverManager.getConnection(
+                  "jdbc:postgresql://" + pghost + ":" + pgport + "/" + pgdatabase,
+                  pguser, pgpassword);
+      }
+      return DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres","postgres","root");
   }
 
   /**
@@ -93,7 +84,7 @@ public class ChessTournamentApplication {
 			st.execute(query);
 
     } catch (Exception e) {
-                        return;
+        return;
     }
   }
 
@@ -188,7 +179,7 @@ public class ChessTournamentApplication {
                                                     HttpStatus.OK);
     } catch (Exception e) {
                         return new ResponseEntity<>(
-                            "Internal server error (CODE 500)",
+                            "Internal server error (CODE 500)"+e.getMessage(),
                             HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

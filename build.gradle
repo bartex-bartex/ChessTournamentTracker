@@ -25,6 +25,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	testLogging.showStandardStreams=true
 }
 
 task runDev(type: JavaExec) {
