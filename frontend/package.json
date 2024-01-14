@@ -10,6 +10,7 @@
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "chess.js": "^1.0.0-beta.6",
+    "jest-html-reporter": "^3.10.2",
     "react": "^18.2.0",
     "react-chessboard": "^4.3.2",
     "react-dom": "^18.2.0",
@@ -21,6 +22,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --silent",
+    "test-gen-report": "react-scripts test --testResultsProcessor=./node_modules/jest-html-reporter",
     "eject": "react-scripts eject",
     "format": "prettier --write .",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx src"

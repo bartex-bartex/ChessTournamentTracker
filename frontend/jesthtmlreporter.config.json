@@ -1,0 +1,5 @@
+{
+    "pageTitle": "HTML Report for MyApp",
+    "outputPath": "jest-report.html",
+    "includeFailureMsg": true
+}
