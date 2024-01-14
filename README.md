@@ -13,13 +13,14 @@ Aby rozpocząć:
 
 - Upewnij się, że na twojej maszynie jest zainstalowany i uruchomiony demon Dockera i jesteś w stanie uruchamiać kontenery oraz korzystać z polecenia `docker-compose` (w teorii projekt powinien działać też z podmanem, lecz projekt nie był z nim testowany, tak więc zalecamy użycie po prostu Dockera). Szczegółowe kroki w celu instalacji znajdziesz [tutaj](https://docs.docker.com/engine/install/).
 - W głównym folderze repozytorium uruchom polecenie `docker-compose up` i zaczekaj aż wszystko się załaduje. Kontener z frontendem powinien wyświetlić komunikat "webpack compiled successfully", a kontener backendowy powinien pokazywać "Started ChessTournamentApplication in ... seconds".
-- Otwórz interfejs webowy PGAdmin pod adresem `http://localhost:5433` i zaloguj się do bazy danych `postgres:5432` (jest to wewnętrzny adres bazy w sieci Dockera) i wszystkie parametry połączenia (login, hasło) ustaw na wartość "postgres".
+- Jeśli na Linux'ie kontener pgAdmin nie uruchamia się i wyrzuca ciągle błędy "[Errno 13] Permission denied: ..." to należy wykonać polecenie `sudo chown -R 5050:5050 ./data/pgadmin` w głównym folderze repozytorium i poczekać chwilę aż kontener podłapie zmiany i zacznie działać.
+- Otwórz interfejs webowy pgAdmin pod adresem http://localhost:5433 i zaloguj się do bazy danych `postgres:5432` (jest to wewnętrzny adres bazy w sieci Dockera) i wszystkie parametry połączenia (login, hasło) ustaw na wartość "postgres".
 - Skonfiguruj wstępną zawartość bazy danych uruchamiając w bazie danych kwerendę SQL zawartą w pliku `init-database.sql`. W ten sposób zostaną w bazie utworzone wszystkie podstawowe tabele wymagane do funkcjonowania aplikacji.
-- Gdy baza danych jest już gotowa, możesz rozpocząć eksploatację strony. Odwiedź w przeglądarce stronę "http://localhost:8080" by ujrzeć stronę startową naszego projektu.
+- Gdy baza danych jest już gotowa, możesz rozpocząć eksploatację strony. Odwiedź w przeglądarce stronę http://localhost:8080 by ujrzeć stronę startową naszego projektu.
 
 
 ## Raporty z Testów:
 
-- raport testów backendu: `./report.html`
+- raport testów backendu: `report.html`
 - raport walidacji ESLint frontendu `eslint-report.html`
 - raport testów jednostkowych Jest frontendu `jest-report.html`
