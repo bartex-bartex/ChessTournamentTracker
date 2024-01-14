@@ -36,11 +36,13 @@ jobs:
 
     - name: Install Dependencies
       run: |
+        cd ./frontend
         yarn install
         yarn global add eslint
 
     - name: Run Yarn Test and ESLint
       run: |
+        cd ./frontend
         yarn test
         yarn eslint
 
@@ -52,4 +54,5 @@ jobs:
 
     - name: Run Gradle Test with PostgreSQL
       run: |
+        cd ./backend  # Adjust to your backend directory
         ./gradlew test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/postgres -Dspring.datasource.username=postgres -Dspring.datasource.password=root
