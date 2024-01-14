@@ -23,6 +23,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --silent",
     "test-gen-report": "react-scripts test --testResultsProcessor=./node_modules/jest-html-reporter",
+    "test-headless": "react-scripts test --silent --watchAll=false",
     "eject": "react-scripts eject",
     "format": "prettier --write .",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx src"

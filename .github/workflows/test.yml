@@ -43,7 +43,7 @@ jobs:
     - name: Run Yarn Test and ESLint
       run: |
         cd ./frontend
-        yarn test
+        yarn test-headless
         yarn eslint
 
     - name: Set up Java
@@ -51,6 +51,10 @@ jobs:
       with:
         distribution: 'adopt'
         java-version: ${{ matrix.java-version }}
+
+    - name: Run Database Initialization Script
+      run: |
+        psql -h localhost -U postgres -d postgres -a -f ./init-database.sql
 
     - name: Run Gradle Test with PostgreSQL
       run: |
