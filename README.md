@@ -21,6 +21,6 @@ Aby rozpocząć:
 
 ## Raporty z Testów:
 
-- raport testów backendu: `report.html`
+- analiza statyczna kodu backendu: `report.html`
 - raport walidacji ESLint frontendu `eslint-report.html`
 - raport testów jednostkowych Jest frontendu `jest-report.html`
