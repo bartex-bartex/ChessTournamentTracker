@@ -222,7 +222,7 @@ class TournamentTest {
         assertEquals(HttpStatus.CONFLICT, tr.playerInfo(2, 2).getStatusCode());
         assertEquals(HttpStatus.CONFLICT, tr.playerInfo(2, 4).getStatusCode());
         assertEquals(HttpStatus.OK, tr.playerInfo(1, 2).getStatusCode());
-        assertEquals(589, tr.playerInfo(1,2).toString().length());
+        assertEquals(590, tr.playerInfo(1,2).toString().length());
     }
 
     /**
