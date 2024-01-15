@@ -43,7 +43,7 @@ jobs:
     - name: Run Yarn Test and ESLint
       run: |
         cd ./frontend
-        yarn test-headless
+        CI=true yarn test
         yarn eslint
 
     - name: Set up Java
