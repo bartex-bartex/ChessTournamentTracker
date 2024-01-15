@@ -54,7 +54,7 @@ jobs:
 
     - name: Run Database Initialization Script
       run: |
-        psql -h localhost -U postgres -d postgres -a -f ./init-database.sql
+        PGPASSWORD=root psql -h 127.0.0.1 -U postgres -d postgres -a -f ./init-database.sql
 
     - name: Run Gradle Test with PostgreSQL
       run: |
