@@ -1,25 +1,25 @@
 version: '3'
 services:
-  # Postgres Database
-  # Default credentials: postgres:postgres@postgres
   postgres:
     image: postgres:14-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: my_database
-      PGDATA: /mount/data
-    expose:
-      - 5432
+      PGDATA: /mount/data  # tells postgres where to store the database
+    # expose:
+    #   - 5432
+    ports:
+      - 127.0.0.1:5432:5432
     volumes:
-      - ./data/postgres:/mount/data
-      - ./data/postgres-dump:/mount/dump
-      - ./init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
+      - ./data/postgres:/mount/data                                        # store actual db data
+      - ./data/postgres-dump:/mount/dump                                   # store db dumps / backups
+      - ./data/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql  # init script, when container starts and db is empty
 
-  # Development Postgres Admin Console
   # Authentication disabled
   pgadmin:
     image: dpage/pgadmin4
+    user: root
     depends_on:
       - postgres
     environment:
@@ -37,6 +37,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    depends_on:
+      - backend
     ports:
       - 127.0.0.1:3000:3000
 
@@ -46,18 +48,14 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     depends_on:
-      - frontend
       - postgres
       - pgadmin
     environment:
-      PGHOST: postgres # This is the hostname of the postgres container
+      PGHOST: postgres  # localhost?
       PGPORT: 5432
-      PGDATABASE: my_database
       PGUSER: postgres
       PGPASSWORD: postgres
+      PGDATABASE: my_database
     ports:
-      - 8080:8080 # Expose to WAN (useful for testing on mobile devices in the same network)
-    volumes:
-      - ./:/app
-    working_dir: /app
+      - 8080:8080
     

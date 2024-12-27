@@ -55,7 +55,7 @@ public class ChessTournamentApplication {
                   "jdbc:postgresql://" + pghost + ":" + pgport + "/" + pgdatabase,
                   pguser, pgpassword);
       }
-      return DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres","postgres","root");
+      return DriverManager.getConnection("jdbc:postgresql://localhost:5432/my_database","postgres","postgres");
   }
 
   /**
