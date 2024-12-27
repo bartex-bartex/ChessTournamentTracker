@@ -1,0 +1,26 @@
+# Use Amazon Corretto as the base image for Java 21
+FROM amazoncorretto:21-alpine
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the Gradle wrapper and build.gradle files to the container
+COPY ./gradlew ./gradlew.bat ./build.gradle ./settings.gradle .
+
+# Copy the Gradle wrapper directory to the container (this includes gradle-wrapper.jar and gradle-wrapper.properties)
+COPY ./gradle/wrapper /app/gradle/wrapper
+
+# Copy the entire backend source code to the container
+COPY ./src /app
+
+# Make the Gradle wrapper executable
+RUN chmod +x ./gradlew
+
+# Run Gradle build
+RUN ./gradlew build
+
+# Expose the port that the backend will run on
+EXPOSE 8080
+
+# Run the backend application in development mode
+CMD ["sh", "-c", "dos2unix ./gradlew && ./gradlew runDev"]

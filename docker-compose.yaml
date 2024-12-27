@@ -3,17 +3,18 @@ services:
   # Postgres Database
   # Default credentials: postgres:postgres@postgres
   postgres:
+    image: postgres:14-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_DB: my_database
       PGDATA: /mount/data
-    image: postgres:14-alpine
     expose:
       - 5432
     volumes:
       - ./data/postgres:/mount/data
       - ./data/postgres-dump:/mount/dump
+      - ./init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
 
   # Development Postgres Admin Console
   # Authentication disabled
@@ -27,25 +28,23 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
-      - 127.0.0.1:5433:80 # Expose to localhost
+      - 127.0.0.1:5433:80
     volumes:
       - ./data/pgadmin:/var/lib/pgadmin
 
-  # Frontend server
+   # Frontend server
   frontend:
-    command: sh -c "yarn install && yarn start"
-    # environment:
-    #   PUBLIC_URL: https://chess-tournament-tracker.com
-    image: node:16-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
-      - 127.0.0.1:3000:3000 # Expose to localhost
-    volumes:
-      - ./frontend:/app
-    working_dir: /app
+      - 127.0.0.1:3000:3000
 
   # Development
   backend:
-    command: sh -c "dos2unix ./gradlew && ./gradlew runDev"
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     depends_on:
       - frontend
       - postgres
@@ -53,32 +52,12 @@ services:
     environment:
       PGHOST: postgres # This is the hostname of the postgres container
       PGPORT: 5432
-      PGDATABASE: postgres
+      PGDATABASE: my_database
       PGUSER: postgres
       PGPASSWORD: postgres
-    image: amazoncorretto:21-alpine
     ports:
       - 8080:8080 # Expose to WAN (useful for testing on mobile devices in the same network)
     volumes:
       - ./:/app
     working_dir: /app
-
-  # # Production
-  # deploy:
-  #   build:
-  #     context: .
-  #   command: yarn run next start
-  #   depends_on:
-  #     - postgres
-  #     - minio
-  #   environment:
-  #     PGHOST: postgres
-  #     PGPORT: 5432
-  #     PGDATABASE: ChessTournamentTracker
-  #     PGUSER: postgres
-  #     PGPASSWORD: postgres
-  #     PORT: 3000
-  #   ports:
-  #     - 127.0.0.1:3000:3000 # Expose to localhost
-  #   restart: always # Restart on failure and system reboot
     

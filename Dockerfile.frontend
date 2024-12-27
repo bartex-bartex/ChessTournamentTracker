@@ -1,0 +1,20 @@
+# Use the official Node.js image as a base
+FROM node:16-alpine
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and yarn.lock to the container
+COPY ./frontend/package.json ./frontend/yarn.lock .
+
+# Install the dependencies
+RUN yarn install
+
+# Copy the rest of the application code to the container
+COPY ./frontend .
+
+# Expose the port that the frontend will run on
+EXPOSE 3000
+
+# Start the frontend application
+CMD ["yarn", "start"]

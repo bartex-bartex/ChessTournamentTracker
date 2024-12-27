@@ -23,6 +23,10 @@ dependencies {
 	implementation 'commons-validator:commons-validator:1.7'
 }
 
+springBoot {
+    mainClass = 'com.prototype.ChessT.ChessTournamentApplication.java'
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 	testLogging.showStandardStreams=true
