@@ -1,4 +1,4 @@
 build:
   docker:
     web: Dockerfile.frontend
-    backend: Dockerfile.backend
+    # backend: Dockerfile.backend

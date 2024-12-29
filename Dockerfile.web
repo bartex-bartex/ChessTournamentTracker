@@ -23,5 +23,4 @@ RUN ./gradlew build -x test
 EXPOSE 8080
 
 # Run the backend application in development mode
-# CMD ["sh", "-c", "dos2unix ./gradlew && ./gradlew runDev"]
-CMD ["sh", "-c", "./gradlew runDev"]
+CMD ["sh", "-c", "./gradlew runDev --args='--server.port=${PORT}'"]

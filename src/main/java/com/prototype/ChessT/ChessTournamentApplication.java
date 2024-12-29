@@ -46,14 +46,8 @@ public class ChessTournamentApplication {
   static Connection establishConnection(int mode) throws SQLException {
       if(mode==0){
           // Get credentials from environment variables
-          String pghost = System.getenv("PGHOST");
-          String pgport = System.getenv("PGPORT");
-          String pgdatabase = System.getenv("PGDATABASE");
-          String pguser = System.getenv("PGUSER");
-          String pgpassword = System.getenv("PGPASSWORD");
-          return DriverManager.getConnection(
-                  "jdbc:postgresql://" + pghost + ":" + pgport + "/" + pgdatabase,
-                  pguser, pgpassword);
+          String dbUrl = System.getenv("DATABASE_URL");
+          return DriverManager.getConnection(dbUrl);
       }
       return DriverManager.getConnection("jdbc:postgresql://localhost:5432/my_database","postgres","postgres");
   }
