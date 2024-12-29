@@ -3,6 +3,8 @@ package com.prototype.ChessT;
 import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -43,11 +45,15 @@ public class ChessTournamentApplication {
     SpringApplication.run(ChessTournamentApplication.class, args);
   }
 
-  static Connection establishConnection(int mode) throws SQLException {
+  static Connection establishConnection(int mode) throws SQLException, URISyntaxException {
       if(mode==0){
-          // Get credentials from environment variables
-          String dbUrl = System.getenv("DATABASE_URL");
-          return DriverManager.getConnection(dbUrl);
+        URI dbUri = new URI(System.getenv("DATABASE_URL"));
+
+        String username = dbUri.getUserInfo().split(":")[0];
+        String password = dbUri.getUserInfo().split(":")[1];
+        String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require";
+
+        return DriverManager.getConnection(dbUrl, username, password);
       }
       return DriverManager.getConnection("jdbc:postgresql://localhost:5432/my_database","postgres","postgres");
   }
