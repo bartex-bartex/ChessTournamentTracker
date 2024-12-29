@@ -16,7 +16,7 @@ export default function Tournament() {
 
   const loadTournamentInfo = useCallback(async () => {
     try {
-      const response = await fetch('/api/tournament/' + id);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/' + id);
 
       if (!response.ok) {
         alert("Failed to fetch tournament details: " + await response.text());
@@ -84,8 +84,9 @@ export default function Tournament() {
                 <Button text="Join Tournament" onClick={async () => {
                   // Send post to /api/tournament/join/{tournamentId}
                   // if success, navigate to /tournament/{tournamentId}/participants
-                  const response = await fetch('/api/tournament/join/' + id, {
+                  const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/join/' + id, {
                     method: 'POST',
+                    credentials: "include"
                   });
 
                   if (response.ok) {
@@ -108,8 +109,9 @@ export default function Tournament() {
               <Button text="End Tournament" onClick={async () => {
                 // Send post to /api/tournament/start/{tournamentId}
                 // on success reload tournament info
-                const response = await fetch('/api/tournament/end/' + id, {
+                const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/end/' + id, {
                   method: 'PATCH',
+                  credentials: "include"
                 });
 
                 if (response.ok) {
@@ -122,11 +124,12 @@ export default function Tournament() {
               {info.rounds_generated < info.rounds && <Button className={styles["begin-next-round"]} text="Begin Next Round" onClick={async () => {
                 // Send post to /api/tournament/generateRoundPairings
                 // on success reload tournament info
-                const response = await fetch('/api/tournament/generateRoundPairings?' + new URLSearchParams([
+                const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/generateRoundPairings?' + new URLSearchParams([
                   ["tournamentId", id!],
                   ["round", info.rounds_generated + 1],
                 ]), {
                   method: 'PUT',
+                  credentials: "include"
                 });
 
                 if (response.ok) {
@@ -145,11 +148,12 @@ export default function Tournament() {
                   newNumberOfRounds.current = parseInt((e.target as HTMLInputElement).value);
                 }} />
                 <Button text="Change" onClick={async () => {
-                  const response = await fetch('/api/tournament/change-rounds-no?' + new URLSearchParams([
+                  const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/change-rounds-no?' + new URLSearchParams([
                     ["tournamentId", id!.toString()],
                     ["newRounds", newNumberOfRounds.current.toString()],
                   ]), {
                     method: 'PUT',
+                    credentials: "include"
                   });
 
                   if (response.ok) {
@@ -165,8 +169,9 @@ export default function Tournament() {
               info.players.length > 0 ? <Button text="Start Tournament" onClick={async () => {
                 // Send post to /api/tournament/start/{tournamentId}
                 // on success reload tournament info
-                const response = await fetch('/api/tournament/start/' + id, {
+                const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/start/' + id, {
                   method: 'PATCH',
+                  credentials: "include"
                 });
 
                 if (response.ok) {

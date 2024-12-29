@@ -8,11 +8,13 @@ WORKDIR /app
 COPY ./frontend/package.json ./frontend/yarn.lock ./
 
 # Install the dependencies
-RUN yarn install --production
+RUN yarn install
 
 # Copy the rest of the application code to the container
-COPY ./frontend/public ./public
-COPY ./frontend/src ./src
+# COPY ./frontend/public ./public
+# COPY ./frontend/src ./src
+COPY ./frontend ./
+
 
 # Expose the port that the frontend will run on
 EXPOSE 3000

@@ -36,7 +36,7 @@ export default function Login() {
         }
 
         // Send request to backend
-        const response = await fetch('/api/user/login?' + new URLSearchParams([
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user/login?' + new URLSearchParams([
           ['username', username],
           ['password', password],
         ]).toString(), {

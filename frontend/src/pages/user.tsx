@@ -29,7 +29,7 @@ export default function User() {
 
   const fetchMyTournaments = useCallback(async () => {
     try {
-      const response = await fetch('/api/user/my-tournaments');
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user/my-tournaments', { credentials: "include" });
 
       if (!response.ok) {
         alert("Failed to fetch tournaments: " + await response.text());
@@ -54,7 +54,7 @@ export default function User() {
     fetchMyTournaments();
     (async () => {
       try {
-        const response = await fetch('/api/user');
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user', { credentials: "include" });
         if (!response.ok) {
           alert('Failed to fetch user details: ' + await response.text());
           return;

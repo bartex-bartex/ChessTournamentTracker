@@ -80,7 +80,7 @@ export default function Create() {
         }
 
         // Send request to backend
-        const response = await fetch('/api/tournament/create?' + new URLSearchParams([
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/create?' + new URLSearchParams([
           ['tournamentName', name],
           ['location', location],
           ['organizer', organizer],
@@ -89,8 +89,9 @@ export default function Create() {
           ['endDate', endDate],
           ['rounds', rounds],
           ['info', info]
-        ]).toString(), {
-          method: 'POST'
+        ]).toString(),  {
+          method: 'POST',
+          credentials: 'include'
         });
 
         // Check if request was successful

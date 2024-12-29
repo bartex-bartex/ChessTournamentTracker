@@ -33,7 +33,7 @@ export default function TournamentGame() {
 
   const fetchTournamentInfo = useCallback(async () => {
     try {
-      const response = await fetch(`/api/tournament/${tournamentId}`);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${tournamentId}`, { credentials: "include" });
       if (!response.ok) {
         alert('Failed to fetch tournament details: ' + await response.text());
         return;
@@ -48,7 +48,7 @@ export default function TournamentGame() {
 
   const fetchMatchInfo = useCallback(async () => {
     try {
-      const response = await fetch(`/api/tournament/match/${matchId}`);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/match/${matchId}`, { credentials: "include" });
       if (!response.ok) {
         alert('Failed to fetch match details: ' + await response.text());
         return;
@@ -130,12 +130,13 @@ export default function TournamentGame() {
                   return;
                 }
 
-                const response = await fetch("/api/tournament/round/updatematch?" + new URLSearchParams([
+                const response = await fetch(process.env.REACT_APP_BACKEND_URL + "/api/tournament/round/updatematch?" + new URLSearchParams([
                   ['matchId', matchId!],
                   ['score', '-1000'], // do not update score
                   ['gameNotation', newGameNotation.current]
                 ]), {
                   method: 'PATCH',
+                  credentials: "include" 
                 });
 
                 if (!response.ok) {

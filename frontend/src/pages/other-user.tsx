@@ -19,7 +19,7 @@ export default function OtherUser() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch('/api/user/account/' + id);
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user/account/' + id, { credentials: "include" });
         if (!response.ok) {
           alert('Failed to fetch user details: ' + await response.text());
           return;

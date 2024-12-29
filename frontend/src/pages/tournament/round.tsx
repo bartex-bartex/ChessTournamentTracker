@@ -44,7 +44,7 @@ export default function TournamentRound() {
 
   const fetchRoundData = useCallback(async (reload: boolean) => {
     try {
-      const response = await fetch("/api/tournament/round?" + new URLSearchParams([
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + "/api/tournament/round?" + new URLSearchParams([
         ['tournamentId', tournamentId!],
         ['round', round!],
       ]).toString());
@@ -79,7 +79,7 @@ export default function TournamentRound() {
 
   const fetchTournamentData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/tournament/${tournamentId}`);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${tournamentId}`);
       if (!response.ok) {
         alert('Failed to fetch tournament details: ' + await response.text());
         return;
@@ -129,7 +129,7 @@ export default function TournamentRound() {
                           {tournamentInfo.is_admin == "1" && tournamentInfo.tournament_state == "1" ? (
                             <select name="result" id="result" defaultValue={data.score} onChange={async e => {
                               const selection = e.target.value;
-                              const result = await fetch("/api/tournament/round/updatematch?" + new URLSearchParams([
+                              const result = await fetch(process.env.REACT_APP_BACKEND_URL + "/api/tournament/round/updatematch?" + new URLSearchParams([
                                 ['matchId', data.match_id],
                                 ['score', selection],
                                 ['gameNotation', ''],

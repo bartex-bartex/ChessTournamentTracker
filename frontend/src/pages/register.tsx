@@ -80,7 +80,7 @@ export default function Register() {
         }
 
         // Send request to backend
-        const response = await fetch('/api/user/register?' + new URLSearchParams([
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user/register?' + new URLSearchParams([
           ['username', username],
           ['password', password1],
           ['passwordAgain', password2],

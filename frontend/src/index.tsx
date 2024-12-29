@@ -28,7 +28,7 @@ function App() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch('/api/user');
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/user', { credentials: "include" });
         if (!response.ok) {
           setSignedInUser("");
           return;
