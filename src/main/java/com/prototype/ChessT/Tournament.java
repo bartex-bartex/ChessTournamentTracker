@@ -16,7 +16,11 @@ import org.springframework.web.bind.annotation.*;
  * Implements logic for endpoints connected with tournament.
  */
 @RestController
-@CrossOrigin("*")
+@CrossOrigin(origins = {
+  "https://chess-tournament-tracker-front-a47b2b11d8a4.herokuapp.com", 
+  "https://chess-tournament-tracker.bartoszwarchol.pl",
+  "http://localhost:3000" // Or whatever your local frontend URL is
+}, allowCredentials = "true", maxAge = 3600)
 public class Tournament {
 
   /**

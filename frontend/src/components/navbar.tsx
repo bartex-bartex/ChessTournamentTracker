@@ -31,8 +31,9 @@ export default function Navbar() {
               text="Log Out"
               onClick={async () => {
                 // Send request to backend
-                const response = await fetch("/api/user/logout", {
+                const response = await fetch(process.env.REACT_APP_BACKEND_URL + "/api/user/logout", {
                   method: "POST",
+                  credentials: "include",
                 });
 
                 // Check if request was successful

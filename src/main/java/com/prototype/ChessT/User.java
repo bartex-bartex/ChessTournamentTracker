@@ -24,7 +24,11 @@ import java.util.regex.Pattern;
  * Implements logic for endpoints connected with user.
  */
 @RestController
-@CrossOrigin("*")
+@CrossOrigin(origins = {
+    "https://chess-tournament-tracker-front-a47b2b11d8a4.herokuapp.com",
+    "https://chess-tournament-tracker.bartoszwarchol.pl",
+    "http://localhost:3000"
+}, allowCredentials = "true", maxAge = 3600)
 public class User {
     /**
      * Rather ugly, but working regex to validate, provided by users email addresses
@@ -358,8 +362,12 @@ public class User {
         st.execute(query);
 
         Cookie c = new Cookie("auth", newAuth);
-        c.setPath("/api/");
+        c.setHttpOnly(false);
         c.setSecure(true);
+        c.setAttribute("SameSite", "None");
+        c.setPath("/api/");
+        c.setDomain("chess-tournament-tracker-back-e1584c7edd6b.herokuapp.com"); // Without -> cookies will be only send to url the cookie was sent from
+        // herokuapp.com is in PSL, but <my_app>.herokuapp.com is not in PSL, so it is possible to store cookie for it
         r.addCookie(c);
     }
 

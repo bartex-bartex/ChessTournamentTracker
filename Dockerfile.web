@@ -1,26 +1,58 @@
-# Use Amazon Corretto as the base image for Java 21
-FROM amazoncorretto:21-alpine
+# # Use the official Node.js image as a base
+# FROM node:16-alpine
+
+# # Set the working directory in the container
+# WORKDIR /app
+
+# # Copy package.json and yarn.lock to the container
+# COPY ./frontend/package.json ./frontend/yarn.lock ./
+
+# # Install the dependencies
+# RUN yarn install
+
+# # Copy the rest of the application code to the container
+# # COPY ./frontend/public ./public
+# # COPY ./frontend/src ./src
+# COPY ./frontend ./
+
+
+# # Expose the port that the frontend will run on
+# EXPOSE 3000
+
+# # Start the frontend application
+# CMD ["yarn", "start"]
+
+# Use the official Node.js image as a base for building
+FROM node:16-alpine AS build
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the Gradle wrapper and build.gradle files to the container
-COPY ./gradlew ./gradlew.bat ./build.gradle ./settings.gradle ./
+# Copy package.json and yarn.lock to the container
+COPY ./frontend/package.json ./frontend/yarn.lock ./
 
-# Copy the Gradle wrapper directory to the container (this includes gradle-wrapper.jar and gradle-wrapper.properties)
-COPY ./gradle/wrapper /app/gradle/wrapper
+# Install the dependencies
+RUN yarn install
 
-# Copy the entire backend source code to the container
-COPY ./src /app/src
+# Copy the rest of the application code to the container
+COPY ./frontend ./
 
-# Make the Gradle wrapper executable
-RUN chmod +x ./gradlew
+ENV REACT_APP_BACKEND_URL="https://chess-tournament-tracker-api.bartoszwarchol.pl"
 
-# Run Gradle build (without tests)
-RUN ./gradlew build -x test
+# Build the application
+RUN yarn build
 
-# Expose the port that the backend will run on
-EXPOSE 8080
+# Use Nginx as a base for serving the built static files
+FROM nginx:stable-alpine
 
-# Run the backend application in development mode
-CMD ["sh", "-c", "./gradlew runDev --args='--server.port=${PORT}'"]
+# Copy the build output from the previous stage to Nginx's HTML directory
+COPY --from=build /app/build /usr/share/nginx/html
+
+# ENV PORT=9999
+COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port $PORT for the server -> NO GOOD?
+# EXPOSE $PORT
+
+# Start Nginx with replaced $PORT
+CMD sed -i -e 's/$PORT/'"$PORT"'/g' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'

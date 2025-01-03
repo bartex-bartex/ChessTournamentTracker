@@ -40,7 +40,8 @@ export default function Login() {
           ['username', username],
           ['password', password],
         ]).toString(), {
-          method: 'POST'
+          method: 'POST',
+          credentials: 'include',
         });
 
         // Check if request was successful

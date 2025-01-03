@@ -30,7 +30,8 @@ export default function Home() {
 
   const fetchRecentTournaments = useCallback(async () => {
     try {
-      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/homepage');
+      console.log(process.env.REACT_APP_BACKEND_URL + '/api/homepage')
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/homepage', { credentials: "include" });
 
       if (!response.ok) {
         alert("Failed to fetch tournaments: " + await response.text());

@@ -23,7 +23,11 @@ import org.springframework.web.bind.annotation.*;
 @SpringBootApplication
 @RestController
 @EnableScheduling
-@CrossOrigin("*")
+@CrossOrigin(origins = {
+  "https://chess-tournament-tracker-front-a47b2b11d8a4.herokuapp.com", 
+  "https://chess-tournament-tracker.bartoszwarchol.pl",
+  "http://localhost:3000"
+}, allowCredentials = "true", maxAge = 3600)
 public class ChessTournamentApplication {
   /**
    * Connection with database, used to create statements
