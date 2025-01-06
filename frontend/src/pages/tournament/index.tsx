@@ -16,7 +16,7 @@ export default function Tournament() {
 
   const loadTournamentInfo = useCallback(async () => {
     try {
-      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/' + id);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + '/api/tournament/' + id, { credentials: "include"});
 
       if (!response.ok) {
         alert("Failed to fetch tournament details: " + await response.text());
@@ -104,7 +104,7 @@ export default function Tournament() {
                 // tournament has ended
                 "You participated."
             )
-          ) : (info.tournament_state !== "0" ? (
+          ) : (info.tournament_state !== "0" ? ( // part for ADMIN != 0
             info.tournament_state !== "2" ? <>
               <Button text="End Tournament" onClick={async () => {
                 // Send post to /api/tournament/start/{tournamentId}

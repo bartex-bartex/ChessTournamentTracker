@@ -44,7 +44,7 @@ export default function TournamentParticipants() {
   useEffect(() => {
     const fetchTournamentData = async () => {
       try {
-        const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${id}`);
+        const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${id}`, {credentials: "include"});
         if (!response.ok) {
           alert('Failed to fetch tournament details: ' + await response.text());
           return;

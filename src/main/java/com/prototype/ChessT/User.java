@@ -366,7 +366,7 @@ public class User {
         c.setSecure(true);
         c.setAttribute("SameSite", "None");
         c.setPath("/api/");
-        c.setDomain("chess-tournament-tracker-back-e1584c7edd6b.herokuapp.com"); // Without -> cookies will be only send to url the cookie was sent from
+        c.setDomain("chess-tournament-tracker-api.bartoszwarchol.pl");
         // herokuapp.com is in PSL, but <my_app>.herokuapp.com is not in PSL, so it is possible to store cookie for it
         r.addCookie(c);
     }

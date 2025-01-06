@@ -91,7 +91,8 @@ export default function Register() {
           ['date_of_birth', dateOfBirth],
           ['fide', fideRating]
         ]).toString(), {
-          method: 'POST'
+          method: 'POST',
+          credentials: "include",
         });
 
         // Check if request was successful

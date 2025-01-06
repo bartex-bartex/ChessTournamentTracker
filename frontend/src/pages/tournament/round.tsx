@@ -47,7 +47,7 @@ export default function TournamentRound() {
       const response = await fetch(process.env.REACT_APP_BACKEND_URL + "/api/tournament/round?" + new URLSearchParams([
         ['tournamentId', tournamentId!],
         ['round', round!],
-      ]).toString());
+      ]).toString(), {credentials: "include"});
       if (!response.ok) {
         alert('Failed to fetch round details: ' + await response.text());
         return;
@@ -79,7 +79,7 @@ export default function TournamentRound() {
 
   const fetchTournamentData = useCallback(async () => {
     try {
-      const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${tournamentId}`);
+      const response = await fetch(process.env.REACT_APP_BACKEND_URL + `/api/tournament/${tournamentId}`, { credentials: "include"});
       if (!response.ok) {
         alert('Failed to fetch tournament details: ' + await response.text());
         return;
@@ -135,6 +135,7 @@ export default function TournamentRound() {
                                 ['gameNotation', ''],
                               ]).toString(), {
                                 method: "PATCH",
+                                credentials: "include"
                               });
 
                               if (!result.ok) {
